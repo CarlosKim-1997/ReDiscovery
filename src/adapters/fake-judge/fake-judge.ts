@@ -8,7 +8,7 @@ interface EvidenceCoordinates {
 }
 
 function result(nodeId: ConwayNodeId, status: JudgeNodeResult["status"], evidence: EvidenceCoordinates): JudgeNodeResult {
-  return status === "ABSENT" || status === "CONTRADICTED"
+  return status === "ABSENT"
     ? { nodeId, status }
     : { nodeId, status, evidence };
 }

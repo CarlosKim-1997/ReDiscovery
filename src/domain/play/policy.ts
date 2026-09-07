@@ -31,7 +31,16 @@ function mergeDiscoveries(session: PlaySession, verdict: JudgeVerdict, thought: 
   return session.discoveries.map((current) => {
     const incoming = verdict.nodes.find(({ nodeId }) => nodeId === current.nodeId);
     if (!incoming || incoming.status === "ABSENT") return current;
-    if (incoming.status === "CONTRADICTED") return { ...current, status: "CONTRADICTED" };
+    if (incoming.status === "CONTRADICTED") {
+      const contradictionEvidence: EvidenceRef | undefined = incoming.evidence
+        ? { answerId: thought.id, spanStart: incoming.evidence.start, spanEnd: incoming.evidence.end }
+        : undefined;
+      return {
+        ...current,
+        status: "CONTRADICTED",
+        ...(contradictionEvidence ? { contradictionEvidence } : {}),
+      };
+    }
     if (current.status === "DISCOVERED") return current;
     const evidence: EvidenceRef | undefined = incoming.evidence
       ? { answerId: thought.id, spanStart: incoming.evidence.start, spanEnd: incoming.evidence.end }
@@ -51,11 +60,25 @@ function hasEnough(discoveries: readonly NodeDiscovery[]) {
   return discovered.length >= 3 && discovered.some(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE");
 }
 
-function chooseGuidance(session: PlaySession, verdict: JudgeVerdict): Exclude<GuidanceEvent["stage"], never> {
+function chooseGuidance(session: PlaySession, discoveries: readonly NodeDiscovery[], verdict: JudgeVerdict): Exclude<GuidanceEvent["stage"], never> {
+  if (discoveries.some(({ status }) => status === "CONTRADICTED")) return "CORRECTION";
   if (session.turnCount >= M1_MAX_TURNS) return "RESCUE";
-  if (verdict.nodes.some(({ status }) => status === "CONTRADICTED")) return "CORRECTION";
   if (verdict.nodes.some(({ status }) => status === "PARTIAL" || status === "DISCOVERED")) return "REFLECT";
   return "NUDGE";
+}
+
+export function hasUnresolvedBlockingContradiction(session: PlaySession): boolean {
+  if (!session.discoveries.some(({ status }) => status === "CONTRADICTED")) return false;
+  const lastCorrection = session.guidance.findLastIndex(({ stage }) => stage === "CORRECTION");
+  const lastRescue = session.guidance.findLastIndex(({ stage }) => stage === "RESCUE");
+  return lastCorrection < 0 || lastRescue <= lastCorrection;
+}
+
+export function canApplyCorrectiveRescue(session: PlaySession): boolean {
+  return session.status === "THINKING"
+    && session.stage === "CORRECTION"
+    && session.turnCount >= M1_MAX_TURNS
+    && hasUnresolvedBlockingContradiction(session);
 }
 
 export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict): PolicyResult {
@@ -64,11 +87,11 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   if (!thought) throw new PlayRuleError("INVALID_SESSION_STATE");
   const discoveries = mergeDiscoveries(evaluating, verdict, thought);
 
-  if (hasEnough(discoveries)) {
+  if (hasEnough(discoveries) && !discoveries.some(({ status }) => status === "CONTRADICTED")) {
     return { session: { ...evaluating, discoveries, status: "LOCKABLE" }, outcome: "LOCKABLE" };
   }
 
-  const stage = chooseGuidance(evaluating, verdict);
+  const stage = chooseGuidance(evaluating, discoveries, verdict);
   const guidance = { stage, text: guidanceCopy[stage] } as const;
   const guidanceEvents = evaluating.guidance.some((event) => event.text === guidance.text)
     ? evaluating.guidance
@@ -87,6 +110,17 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   };
 }
 
+export function applyCorrectiveRescue(session: PlaySession): PlaySession {
+  if (!canApplyCorrectiveRescue(session)) throw new PlayRuleError("INVALID_SESSION_STATE");
+  const guidance = { stage: "RESCUE", text: guidanceCopy.RESCUE } as const;
+  return {
+    ...session,
+    status: "LOCKABLE",
+    stage: "RESCUE",
+    guidance: [...session.guidance, guidance],
+  };
+}
+
 export function selectRepresentativeEvidence(session: PlaySession): EvidenceRef {
   const strong = [...session.discoveries].reverse().find(({ status, evidence }) => status === "DISCOVERED" && evidence)?.evidence;
   if (strong) return strong;
@@ -97,6 +131,7 @@ export function selectRepresentativeEvidence(session: PlaySession): EvidenceRef 
 
 export function lockPlaySession(session: PlaySession): PlaySession {
   if (session.status !== "LOCKABLE") throw new PlayRuleError("INVALID_SESSION_STATE");
+  if (hasUnresolvedBlockingContradiction(session)) throw new PlayRuleError("INVALID_SESSION_STATE");
   return { ...session, status: "LOCKED", lockEvidence: selectRepresentativeEvidence(session) };
 }
 

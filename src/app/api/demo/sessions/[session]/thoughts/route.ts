@@ -3,7 +3,9 @@ import { submitThought } from "@/application/play/demo-game";
 import { services } from "@/server/container";
 import { apiError, noStore } from "../../../_shared";
 
-const bodySchema = z.object({ thought: z.string().trim().min(1).max(2_000) });
+const bodySchema = z.object({
+  thought: z.string().max(2_000).refine((thought) => thought.trim().length > 0),
+});
 
 export async function POST(request: Request, { params }: { params: Promise<{ session: string }> }) {
   try {

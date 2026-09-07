@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const full = "팀 경계가 소통 경계를 만들고 설계 결정이 그 경계를 따라 모여 시스템 구조가 조직 구조를 닮는다.";
 const partial = "팀 안에서 소통이 더 쉽고, 팀 경계 밖과는 대화하기 어렵기 때문이다.";
 const wrong = "사용자가 우연히 그런 구성을 더 좋아했기 때문이다.";
+const misconception = "조직이나 소통은 상관없고 기술만 결과를 결정한다.";
 
 async function start(page: Page) {
   await page.goto("/");
@@ -67,6 +68,21 @@ test("direct Result navigation preserves the staged Reveal event", async ({ page
   await expect(page.getByText("당신의 생각")).toBeVisible();
   await expect(page).toHaveURL(`/result/${id}`, { timeout: 5_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Conway's Law");
+});
+
+test("final-turn contradiction requires bounded corrective Rescue before Reveal", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await start(page);
+  await submit(page, wrong);
+  await submit(page, misconception);
+  await expect(page.getByLabel("CORRECTION 도움")).toBeVisible();
+  await expect(page.getByRole("button", { name: "내 생각 잠그고 공개하기" })).toHaveCount(0);
+  await expect(page.getByLabel("2개의 생각을 제출했고 정정 도움을 확인하는 중입니다")).toHaveText("2 / 2");
+
+  await page.getByRole("button", { name: "도움으로 이어가기" }).click();
+  await expect(page.getByLabel("RESCUE 도움")).toBeVisible();
+  await expect(page.getByRole("button", { name: "내 생각 잠그고 공개하기" })).toBeVisible();
+  await lockAndFinish(page);
 });
 
 test("Scenario D: unfinished session resumes after reload", async ({ page }) => {

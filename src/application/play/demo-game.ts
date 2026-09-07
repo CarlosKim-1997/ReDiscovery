@@ -1,7 +1,15 @@
 import type { JudgePort } from "@/ports/judge";
 import type { PrimaryStorePort } from "@/ports/primary-store";
 import { PlayRuleError } from "@/domain/play/errors";
-import { applyJudgeVerdict, beginEvaluation, completeReveal, lockPlaySession } from "@/domain/play/policy";
+import {
+  applyCorrectiveRescue,
+  applyJudgeVerdict,
+  beginEvaluation,
+  canApplyCorrectiveRescue,
+  completeReveal,
+  lockPlaySession,
+  M1_MAX_TURNS,
+} from "@/domain/play/policy";
 import { createPlaySession } from "@/domain/play/session";
 import { toPublicSessionView } from "./session-view";
 
@@ -27,6 +35,7 @@ export async function submitThought(deps: DemoGameDependencies, id: string, text
   const session = await deps.store.getSession(id);
   if (!session) return undefined;
   if (text.length > 2_000) throw new Error("ANSWER_TOO_LONG");
+  if (session.turnCount >= M1_MAX_TURNS) throw new PlayRuleError("INVALID_SESSION_STATE");
   const thought = {
     id: `${session.id}:thought:${session.turnCount + 1}`,
     turn: session.turnCount + 1,
@@ -42,9 +51,16 @@ export async function submitThought(deps: DemoGameDependencies, id: string, text
     ...(lastGuidance ? { lastGuidance } : {}),
   });
   for (const node of verdict.nodes) {
-    if (node.status !== "ABSENT" && node.status !== "CONTRADICTED") {
+    if (node.status !== "ABSENT") {
       const evidence = node.evidence;
-      if (!evidence || evidence.start < 0 || evidence.end > text.length || evidence.start >= evidence.end) {
+      if (
+        !evidence
+        || !Number.isInteger(evidence.start)
+        || !Number.isInteger(evidence.end)
+        || evidence.start < 0
+        || evidence.end > text.length
+        || evidence.start >= evidence.end
+      ) {
         throw new Error("INVALID_JUDGE_EVIDENCE");
       }
     }
@@ -52,6 +68,14 @@ export async function submitThought(deps: DemoGameDependencies, id: string, text
   const result = applyJudgeVerdict(evaluating, verdict);
   await deps.store.saveSession(result.session);
   return { outcome: result.outcome, session: toPublicSessionView(result.session) };
+}
+
+export async function continueWithCorrectiveRescue(deps: DemoGameDependencies, id: string) {
+  const session = await deps.store.getSession(id);
+  if (!session) return undefined;
+  const recovered = applyCorrectiveRescue(session);
+  await deps.store.saveSession(recovered);
+  return toPublicSessionView(recovered);
 }
 
 export async function lockThought(deps: DemoGameDependencies, id: string) {
@@ -84,6 +108,10 @@ export async function restoreDemoSession(
   }
   let current = await deps.store.getSession(snapshot.id);
   if (!current) return undefined;
+  if ((snapshot.status === "LOCKED" || snapshot.status === "REVEALED") && canApplyCorrectiveRescue(current)) {
+    await continueWithCorrectiveRescue(deps, snapshot.id);
+    current = await deps.store.getSession(snapshot.id) ?? current;
+  }
   if ((snapshot.status === "LOCKED" || snapshot.status === "REVEALED") && current.status === "LOCKABLE") {
     await lockThought(deps, snapshot.id);
     current = await deps.store.getSession(snapshot.id) ?? current;

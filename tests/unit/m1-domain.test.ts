@@ -2,8 +2,23 @@ import { describe, expect, it } from "vitest";
 import { FakeJudgeAdapter } from "@/adapters/fake-judge/fake-judge";
 import { InMemoryPrimaryStore } from "@/adapters/in-memory-primary-store/in-memory-primary-store";
 import { getDemoReveal } from "@/application/reveal/get-demo-reveal";
-import { completeDemoReveal, getDemoSession, lockThought, restoreDemoSession, startDemoSession, submitThought } from "@/application/play/demo-game";
-import { applyJudgeVerdict, beginEvaluation, completeReveal, lockPlaySession, selectRepresentativeEvidence } from "@/domain/play/policy";
+import {
+  completeDemoReveal,
+  continueWithCorrectiveRescue,
+  getDemoSession,
+  lockThought,
+  restoreDemoSession,
+  startDemoSession,
+  submitThought,
+} from "@/application/play/demo-game";
+import {
+  applyJudgeVerdict,
+  beginEvaluation,
+  completeReveal,
+  hasUnresolvedBlockingContradiction,
+  lockPlaySession,
+  selectRepresentativeEvidence,
+} from "@/domain/play/policy";
 import { createPlaySession, resolveEvidence, type PlaySession } from "@/domain/play/session";
 
 const full = "팀 경계가 소통 경계를 만들고 설계 결정이 그 경계를 따라 모여 시스템 구조가 조직 구조를 닮는다.";
@@ -80,6 +95,60 @@ describe("M1 session and deterministic Judge", () => {
     expect(result?.session.guidance[0]?.text).toContain("소통 비용");
   });
 
+  it("keeps a final-turn contradiction blocked until explicit corrective Rescue", async () => {
+    const game = deps();
+    await startDemoSession(game, "final-contradiction");
+    await submitThought(game, "final-contradiction", wrong);
+    const contradicted = await submitThought(game, "final-contradiction", misconception);
+    const blocked = await game.store.getSession("final-contradiction") as PlaySession;
+
+    expect(contradicted).toMatchObject({ outcome: "GUIDED", session: { status: "THINKING", stage: "CORRECTION", turnCount: 2 } });
+    expect(hasUnresolvedBlockingContradiction(blocked)).toBe(true);
+    expect(() => lockPlaySession({ ...blocked, status: "LOCKABLE" })).toThrow("INVALID_SESSION_STATE");
+    await expect(submitThought(game, "final-contradiction", "다시 써보겠다.")).rejects.toThrow("INVALID_SESSION_STATE");
+
+    const recovered = await continueWithCorrectiveRescue(game, "final-contradiction");
+    const recoveryState = await game.store.getSession("final-contradiction") as PlaySession;
+    expect(recovered).toMatchObject({ status: "LOCKABLE", stage: "RESCUE" });
+    expect(recoveryState.discoveries.find(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE")?.status).toBe("CONTRADICTED");
+    expect(hasUnresolvedBlockingContradiction(recoveryState)).toBe(false);
+    await lockThought(game, "final-contradiction");
+    await completeDemoReveal(game, "final-contradiction");
+    expect(await getDemoSession(game, "final-contradiction")).toMatchObject({ status: "REVEALED", revealCompleted: true });
+  });
+
+  it("preserves literal contradiction evidence in original whitespace coordinates", async () => {
+    const game = deps();
+    const submitted = ` \n${misconception}\t `;
+    const verdict = await game.judge.evaluate({ currentAnswer: submitted, priorConfirmedState: [] });
+    const judged = verdict.nodes.find(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE");
+    expect(judged).toMatchObject({ status: "CONTRADICTED", evidence: { start: 2, end: 2 + misconception.length } });
+    expect(submitted.slice(judged?.evidence?.start, judged?.evidence?.end)).toBe(misconception);
+
+    await startDemoSession(game, "contradiction-evidence");
+    await submitThought(game, "contradiction-evidence", submitted);
+    const stored = await game.store.getSession("contradiction-evidence") as PlaySession;
+    const evidence = stored.discoveries.find(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE")?.contradictionEvidence;
+    expect(stored.thoughts[0]?.text).toBe(submitted);
+    expect(evidence && resolveEvidence(stored, evidence)).toBe(misconception);
+  });
+
+  it("rejects CONTRADICTED Judge output without current-answer evidence", async () => {
+    const game = deps();
+    const invalidGame = {
+      ...game,
+      judge: {
+        evaluate: async () => ({
+          answerType: "REASONING" as const,
+          ambiguity: "NONE" as const,
+          nodes: [{ nodeId: "SYSTEM_RESEMBLANCE" as const, status: "CONTRADICTED" as const }],
+        }),
+      },
+    };
+    await startDemoSession(invalidGame, "invalid-contradiction-evidence");
+    await expect(submitThought(invalidGame, "invalid-contradiction-evidence", misconception)).rejects.toThrow("INVALID_JUDGE_EVIDENCE");
+  });
+
   it("uses actual submitted text as representative evidence", async () => {
     const game = deps();
     await startDemoSession(game, "evidence");
@@ -128,6 +197,20 @@ describe("M1 session and deterministic Judge", () => {
     const restored = await restoreDemoSession(game, { id: "restore", thoughts: [wrong, "모르겠다."], status: "LOCKED" });
     expect(restored).toMatchObject({ id: "restore", status: "LOCKED", stage: "RESCUE", turnCount: 2 });
     expect((await getDemoSession(game, "restore"))?.guidance.map(({ stage }) => stage)).toEqual(["NUDGE", "RESCUE"]);
+  });
+
+  it("reconstructs an explicitly recovered contradiction without changing its Judge status", async () => {
+    const game = deps();
+    const restored = await restoreDemoSession(game, {
+      id: "restore-contradiction",
+      thoughts: [wrong, misconception],
+      status: "LOCKED",
+    });
+    const stored = await game.store.getSession("restore-contradiction");
+
+    expect(restored).toMatchObject({ status: "LOCKED", stage: "RESCUE", turnCount: 2 });
+    expect(stored?.guidance.map(({ stage }) => stage)).toEqual(["NUDGE", "CORRECTION", "RESCUE"]);
+    expect(stored?.discoveries.find(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE")?.status).toBe("CONTRADICTED");
   });
 
   it("exposes EVALUATING as a real intermediate state", async () => {

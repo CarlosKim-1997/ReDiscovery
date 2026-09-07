@@ -52,13 +52,23 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     router.push(`/reveal/${sessionId}`);
   }
 
+  async function continueWithHelp() {
+    const response = await fetch(`/api/demo/sessions/${sessionId}/recovery`, { method: "POST" });
+    if (!response.ok) return setError("도움을 이어가지 못했습니다.");
+    const { session } = await response.json() as { session: PublicSessionView };
+    setPayload((current) => current ? { ...current, session } : current);
+    saveDemoSnapshot(session);
+  }
+
   if (error && !payload) return <main className="page-shell"><p role="alert">{error}</p></main>;
   if (!payload) return <main className="page-shell"><p className="status-copy">문제를 준비하는 중…</p></main>;
   const { daily, session } = payload;
   const latestGuidance = session.guidance.at(-1);
   const lockable = session.status === "LOCKABLE";
   const displayedTurn = Math.min(session.turnCount + (lockable ? 0 : 1), session.maxTurns);
-  const turnLabel = lockable
+  const turnLabel = session.correctiveRescueAvailable
+    ? `${session.turnCount}개의 생각을 제출했고 정정 도움을 확인하는 중입니다`
+    : lockable
     ? `${session.turnCount}개의 생각을 제출했고 이제 잠글 수 있습니다`
     : `${displayedTurn}번째 생각 작성 중`;
 
@@ -100,6 +110,13 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           <h2 id="lock-title">여기까지 닿았습니다.</h2>
           <blockquote>{session.representativeThought}</blockquote>
           <button className="primary-button" onClick={lock}>내 생각 잠그고 공개하기</button>
+        </section>
+      ) : session.correctiveRescueAvailable ? (
+        <section className="lock-panel" aria-labelledby="recovery-title">
+          <p className="eyebrow">정정 도움</p>
+          <h2 id="recovery-title">이 관점을 연결해볼까요?</h2>
+          <p>답을 다시 쓰지 않아도 핵심 연결을 확인하고 계속할 수 있습니다.</p>
+          <button className="primary-button" onClick={continueWithHelp}>도움으로 이어가기</button>
         </section>
       ) : (
         <form className="composer" onSubmit={submit}>

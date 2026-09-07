@@ -26,6 +26,7 @@ export interface NodeDiscovery {
   readonly status: NodeStatus;
   readonly firstStage?: PlayStage;
   readonly evidence?: EvidenceRef;
+  readonly contradictionEvidence?: EvidenceRef;
 }
 
 export interface GuidanceEvent {
