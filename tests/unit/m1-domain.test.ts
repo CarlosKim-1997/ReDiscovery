@@ -89,6 +89,20 @@ describe("M1 session and deterministic Judge", () => {
     expect(resolveEvidence(stored, evidence)).toBe(full);
   });
 
+  it("keeps Judge evidence offsets in the exact stored answer coordinate system", async () => {
+    const game = deps();
+    const submitted = `  \n${full}\t  `;
+    await startDemoSession(game, "spaced-evidence");
+    const result = await submitThought(game, "spaced-evidence", submitted);
+    const stored = await game.store.getSession("spaced-evidence") as PlaySession;
+    const evidence = selectRepresentativeEvidence(stored);
+
+    expect(stored.thoughts[0]?.text).toBe(submitted);
+    expect(evidence).toMatchObject({ spanStart: 3, spanEnd: 3 + full.length });
+    expect(resolveEvidence(stored, evidence)).toBe(full);
+    expect(result?.session.representativeThought).toBe(full);
+  });
+
   it("forbids Lock before LOCKABLE and Reveal before Lock", async () => {
     const session = createPlaySession("forbidden");
     expect(() => lockPlaySession(session)).toThrow("INVALID_SESSION_STATE");

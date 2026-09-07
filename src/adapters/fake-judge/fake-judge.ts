@@ -2,15 +2,24 @@ import { CONWAY_NODE_IDS, type ConwayNodeId } from "@/domain/play/session";
 import type { JudgeNodeResult, JudgeVerdict } from "@/domain/play/judgment";
 import type { JudgePort } from "@/ports/judge";
 
-function result(nodeId: ConwayNodeId, status: JudgeNodeResult["status"], answer: string): JudgeNodeResult {
+interface EvidenceCoordinates {
+  readonly start: number;
+  readonly end: number;
+}
+
+function result(nodeId: ConwayNodeId, status: JudgeNodeResult["status"], evidence: EvidenceCoordinates): JudgeNodeResult {
   return status === "ABSENT" || status === "CONTRADICTED"
     ? { nodeId, status }
-    : { nodeId, status, evidence: { start: 0, end: answer.length } };
+    : { nodeId, status, evidence };
 }
 
 export class FakeJudgeAdapter implements JudgePort {
   async evaluate({ currentAnswer }: Parameters<JudgePort["evaluate"]>[0]): Promise<JudgeVerdict> {
     const answer = currentAnswer.trim();
+    const evidence = {
+      start: currentAnswer.length - currentAnswer.trimStart().length,
+      end: currentAnswer.trimEnd().length,
+    } as const;
     const compact = answer.toLocaleLowerCase("ko-KR").replaceAll(/\s/g, "");
     const misconception = compact.includes("기술만") || compact.includes("소통은상관없") || compact.includes("조직은상관없");
     const mentionsCommunication = compact.includes("소통") || compact.includes("의사소통") || compact.includes("대화");
@@ -24,28 +33,28 @@ export class FakeJudgeAdapter implements JudgePort {
       return {
         answerType: "REASONING",
         ambiguity: "NONE",
-        nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, nodeId === "SYSTEM_RESEMBLANCE" ? "CONTRADICTED" : "ABSENT", answer)),
+        nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, nodeId === "SYSTEM_RESEMBLANCE" ? "CONTRADICTED" : "ABSENT", evidence)),
       };
     }
     if (full) {
-      return { answerType: "REASONING", ambiguity: "NONE", nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "DISCOVERED", answer)) };
+      return { answerType: "REASONING", ambiguity: "NONE", nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "DISCOVERED", evidence)) };
     }
     if (mentionsCommunication || (mentionsOrganization && mentionsBoundary)) {
       return {
         answerType: "REASONING",
         ambiguity: answer.length < 15 ? "TOO_SHORT" : "NONE",
         nodes: [
-          result("TEAM_BOUNDARIES", mentionsOrganization ? "DISCOVERED" : "PARTIAL", answer),
-          result("COMMUNICATION_FRICTION", mentionsCommunication ? "DISCOVERED" : "PARTIAL", answer),
-          result("DECISION_CLUSTERING", mentionsDesign ? "PARTIAL" : "ABSENT", answer),
-          result("SYSTEM_RESEMBLANCE", mentionsSystem ? "PARTIAL" : "ABSENT", answer),
+          result("TEAM_BOUNDARIES", mentionsOrganization ? "DISCOVERED" : "PARTIAL", evidence),
+          result("COMMUNICATION_FRICTION", mentionsCommunication ? "DISCOVERED" : "PARTIAL", evidence),
+          result("DECISION_CLUSTERING", mentionsDesign ? "PARTIAL" : "ABSENT", evidence),
+          result("SYSTEM_RESEMBLANCE", mentionsSystem ? "PARTIAL" : "ABSENT", evidence),
         ],
       };
     }
     return {
       answerType: answer.length === 0 ? "EMPTY" : "REASONING",
       ambiguity: answer.length < 15 ? "TOO_SHORT" : "NONE",
-      nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "ABSENT", answer)),
+      nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "ABSENT", evidence)),
     };
   }
 }

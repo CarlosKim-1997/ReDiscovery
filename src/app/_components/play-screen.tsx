@@ -57,12 +57,16 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const { daily, session } = payload;
   const latestGuidance = session.guidance.at(-1);
   const lockable = session.status === "LOCKABLE";
+  const displayedTurn = Math.min(session.turnCount + (lockable ? 0 : 1), session.maxTurns);
+  const turnLabel = lockable
+    ? `${session.turnCount}개의 생각을 제출했고 이제 잠글 수 있습니다`
+    : `${displayedTurn}번째 생각 작성 중`;
 
   return (
     <main className="page-shell play-shell">
       <header className="play-header">
         <p className="eyebrow">{daily.label} · 약 {daily.estimatedMinutes}분</p>
-        <span aria-label={`${session.turnCount}번째 생각`}>{session.turnCount + 1} / 2</span>
+        <span aria-label={turnLabel}>{displayedTurn} / {session.maxTurns}</span>
       </header>
       {!lockable ? (
         <section className="scenario-card" aria-labelledby="scenario-title">

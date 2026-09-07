@@ -44,13 +44,29 @@ test("Scenario B: partial discovery receives Reflect then reaches Lock", async (
 
 test("Scenario C: wrong path receives Nudge, Rescue, and still reveals", async ({ page }) => {
   await start(page);
+  await expect(page.getByLabel("1번째 생각 작성 중")).toHaveText("1 / 2");
   await submit(page, wrong);
   await expect(page.getByLabel("NUDGE 도움")).toBeVisible();
   await submit(page, "아직 잘 모르겠다.");
   await expect(page.getByLabel("RESCUE 도움")).toBeVisible();
   await expect(page.getByText("여기까지 닿았습니다.")).toBeVisible();
+  await expect(page.getByLabel("2개의 생각을 제출했고 이제 잠글 수 있습니다")).toHaveText("2 / 2");
   await lockAndFinish(page);
   await expect(page.getByText("도움을 통해 핵심 구조와 만났습니다.")).toBeVisible();
+});
+
+test("direct Result navigation preserves the staged Reveal event", async ({ page }) => {
+  await start(page);
+  await submit(page, full);
+  const id = page.url().split("/").at(-1);
+  const lockResponse = await page.request.post(`/api/demo/sessions/${id}/lock`);
+  expect(lockResponse.ok()).toBe(true);
+
+  await page.goto(`/result/${id}`);
+  await expect(page).toHaveURL(`/reveal/${id}`);
+  await expect(page.getByText("당신의 생각")).toBeVisible();
+  await expect(page).toHaveURL(`/result/${id}`, { timeout: 5_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Conway's Law");
 });
 
 test("Scenario D: unfinished session resumes after reload", async ({ page }) => {

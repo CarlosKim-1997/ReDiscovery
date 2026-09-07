@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadDemoSession, saveDemoSnapshot } from "./demo-storage";
+import { loadDemoSession } from "./demo-storage";
 import type { RevealView } from "./demo-types";
-import type { PublicSessionView } from "@/application/play/session-view";
 
 export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
@@ -16,11 +15,9 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
       try {
         const payload = await loadDemoSession(sessionId);
         if (payload.session.status === "LOCKED") {
-          const completed = await fetch(`/api/demo/sessions/${sessionId}/reveal`, { method: "POST" });
-          if (!completed.ok) throw new Error("REVEAL_COMPLETE_FAILED");
-          const body = await completed.json() as { session: PublicSessionView };
-          saveDemoSnapshot(body.session);
-        } else if (payload.session.status !== "REVEALED") {
+          return router.replace(`/reveal/${sessionId}`);
+        }
+        if (payload.session.status !== "REVEALED") {
           return router.replace(`/play/${sessionId}`);
         }
         const response = await fetch(`/api/demo/sessions/${sessionId}/reveal`, { cache: "no-store" });
