@@ -1,0 +1,9 @@
+packages:
+  - .
+
+# Permit only the native build dependencies used by the toolchain.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  '@tailwindcss/oxide': true
+  unrs-resolver: true
