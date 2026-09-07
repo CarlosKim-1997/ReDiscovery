@@ -1,4 +1,4 @@
-name: M0 checks
+name: M0 + M1 checks
 
 on:
   push:

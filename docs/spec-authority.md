@@ -37,3 +37,12 @@ remaining issues before proceeding to M1. No future milestone code in M0.
   remain deferred.
 
 All other requirements and exact contracts remain governed by the original packet.
+
+## M1 implementation scope
+
+M1 implements only the deterministic Conway walking skeleton authorized after M0:
+minimal PlaySession/policy, JudgePort with FakeJudgeAdapter, PrimaryStorePort with
+InMemoryPrimaryStore, M1-only local snapshot replay, browser routes, Lock/Reveal,
+and Result. It does not weaken or replace any Master Packet rule. Production Daily,
+content persistence, identity, external AI, abuse/cost, and analytics remain later
+milestones.

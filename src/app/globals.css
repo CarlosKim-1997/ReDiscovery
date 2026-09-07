@@ -2,12 +2,118 @@
 
 :root {
   color-scheme: light;
-  background: #fafaf9;
-  color: #1c1917;
-  font-family: Arial, "Malgun Gothic", sans-serif;
+  background: #f4f1ea;
+  color: #23221e;
+  font-family: Georgia, "Times New Roman", "Malgun Gothic", serif;
+  --ink: #23221e;
+  --muted: #716e65;
+  --paper: #fcfaf5;
+  --line: #d8d2c5;
+  --accent: #405548;
 }
 
 body {
   margin: 0;
   min-width: 280px;
+  background:
+    radial-gradient(circle at 15% 8%, rgb(255 255 255 / 75%), transparent 32rem),
+    #f4f1ea;
+}
+
+button, textarea { font: inherit; }
+button { min-height: 48px; }
+
+.page-shell {
+  box-sizing: border-box;
+  width: min(100%, 42rem);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: clamp(2rem, 7vw, 4.5rem) clamp(1.25rem, 5vw, 2.25rem);
+}
+
+.home-shell { display: flex; flex-direction: column; justify-content: center; }
+.eyebrow, .guidance-label {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-family: Arial, "Malgun Gothic", sans-serif;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.home-shell h1, .result-shell > h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  word-break: keep-all;
+}
+.lede { max-width: 31rem; margin: 1.5rem 0 2.5rem; color: #555249; font-size: 1.08rem; line-height: 1.8; word-break: keep-all; }
+.home-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.primary-button, .secondary-button {
+  border: 1px solid var(--ink);
+  border-radius: .25rem;
+  padding: .85rem 1.2rem;
+  cursor: pointer;
+  font-family: Arial, "Malgun Gothic", sans-serif;
+  font-weight: 700;
+}
+.primary-button { background: var(--ink); color: #fff; }
+.secondary-button { background: transparent; color: var(--ink); }
+.primary-button:disabled { cursor: default; opacity: .45; }
+.quiet-note { margin: 1.5rem 0 0; color: var(--muted); font-size: .84rem; }
+
+.play-shell { padding-bottom: 12rem; }
+.play-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--muted); font-family: Arial, "Malgun Gothic", sans-serif; font-size: .8rem; }
+.scenario-card { margin-top: 1.5rem; padding: clamp(1.5rem, 5vw, 2.4rem); border: 1px solid var(--line); background: var(--paper); box-shadow: 0 1rem 3rem rgb(68 61 49 / 6%); }
+.scenario-card h1 { margin: 0 0 1rem; font-size: 1.7rem; font-weight: 500; }
+.scenario-card p { margin: 0; line-height: 1.85; word-break: keep-all; }
+.guidance-card { margin: 1rem 0; border-left: 3px solid var(--accent); padding: 1.15rem 1.25rem; background: #e8ede7; }
+.guidance-rescue { background: #e7e1d4; border-color: #826a43; }
+.guidance-card p:last-child { margin: 0; line-height: 1.7; word-break: keep-all; }
+.guidance-label { margin-bottom: .55rem; }
+.previous-thoughts { margin: 1.25rem 0; color: var(--muted); font-family: Arial, "Malgun Gothic", sans-serif; font-size: .9rem; }
+.previous-thoughts summary { min-height: 44px; cursor: pointer; }
+.previous-thoughts li { margin-bottom: .6rem; line-height: 1.55; }
+.composer { position: sticky; bottom: 0; margin-top: 1.5rem; padding: 1.25rem; border: 1px solid var(--line); background: rgb(252 250 245 / 97%); box-shadow: 0 -.7rem 2rem rgb(68 61 49 / 7%); }
+.composer label { display: block; margin-bottom: .85rem; font-size: 1.08rem; font-weight: 700; line-height: 1.5; word-break: keep-all; }
+.composer textarea { box-sizing: border-box; width: 100%; min-height: 8rem; resize: vertical; border: 1px solid #aaa396; border-radius: .2rem; padding: .9rem; background: #fffefa; color: var(--ink); font-size: 1rem; line-height: 1.55; }
+.composer textarea:focus { outline: 3px solid rgb(64 85 72 / 18%); border-color: var(--accent); }
+.composer-footer { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; margin-top: .8rem; }
+.counter { color: transparent; font-family: Arial, "Malgun Gothic", sans-serif; font-size: .75rem; }
+.counter.visible { color: var(--muted); }
+.thinking-panel, .lock-panel { margin-top: 1.5rem; padding: 1.6rem; border-top: 1px solid var(--line); }
+.thinking-panel h2, .lock-panel h2 { margin: 0; font-size: 1.5rem; font-weight: 500; }
+blockquote { margin: 1.2rem 0; padding-left: 1rem; border-left: 2px solid var(--line); font-size: 1.2rem; line-height: 1.65; }
+.error-copy { color: #8b2e24; font-family: Arial, "Malgun Gothic", sans-serif; }
+.status-copy { margin-top: 40vh; text-align: center; color: var(--muted); }
+
+.reveal-shell { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.reveal-beat, .rewind-line, .transition-copy, .hidden-beat { opacity: 0; transform: translateY(.6rem); transition: opacity .3s ease, transform .3s ease; }
+.reveal-beat.shown, .rewind-line.shown, .transition-copy.shown, .shown { opacity: 1; transform: none; }
+.reveal-shell blockquote { max-width: 34rem; font-size: clamp(1.25rem, 5vw, 1.8rem); }
+.rewind-line { margin: 1.3rem 0; color: var(--muted); font-family: Arial, "Malgun Gothic", sans-serif; font-size: .85rem; letter-spacing: .08em; }
+.history-beat { min-height: 11rem; }
+.reveal-year { margin: 0; color: var(--accent); font-size: clamp(3rem, 14vw, 6rem); line-height: 1; }
+.history-beat > p:not(.reveal-year) { margin: .8rem 0 .25rem; font-family: Arial, "Malgun Gothic", sans-serif; }
+.history-beat h1 { margin: 0; font-size: clamp(2rem, 8vw, 3.8rem); font-weight: 500; }
+.transition-copy { color: var(--muted); }
+
+.result-shell { padding-bottom: 4rem; }
+.historical-line { margin: 1rem 0 2.5rem; color: var(--muted); font-family: Arial, "Malgun Gothic", sans-serif; }
+.result-card, .connection-card { margin: 1rem 0; padding: 1.5rem; border: 1px solid var(--line); background: var(--paper); }
+.result-card h2, .connection-card h2 { margin: 0 0 1rem; font-family: Arial, "Malgun Gothic", sans-serif; font-size: .85rem; letter-spacing: .06em; }
+.connection-card p { line-height: 1.75; word-break: keep-all; }
+.guidance-provenance { margin: 1.5rem 0; color: var(--accent); font-weight: 700; }
+
+@media (max-width: 480px) {
+  .page-shell { padding-inline: 1rem; }
+  .play-shell { padding-bottom: 8rem; }
+  .composer { margin-inline: -.25rem; padding: 1rem; }
+  .composer-footer .primary-button { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

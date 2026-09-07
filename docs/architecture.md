@@ -1,4 +1,4 @@
-# M0 architecture
+# Architecture through M1
 
 ```text
 Next.js route (src/app)
@@ -61,7 +61,23 @@ They compare and serialize as the canonical strings, without framework/vendor
 dependencies, numeric enums, database mappings, or state transition behavior.
 Contract tests pin all seven serialized vocabularies and their exact union types.
 
-Store/Judge/Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when
-their application use cases are implemented. M0 has no sessions, content,
-identity, AI call, experiment, PWA service worker, production data, or deployment.
-This keeps later contracts driven by accepted milestone requirements.
+M1 adds the first consumers for `JudgePort` and `PrimaryStorePort`. The server
+composition root selects `FakeJudgeAdapter` and `InMemoryPrimaryStore`.
+Route handlers call explicit application use cases; domain policy alone determines
+Guidance, LOCKABLE, Lock, and Reveal completion transitions. UI code only renders
+the returned public session projection.
+
+The public projection contains submitted thoughts, delivered guidance, lifecycle
+status, and representative text. It excludes node verdicts and all Reveal history.
+The Reveal fixture lives in a server-only module and is returned by a dedicated API
+only for LOCKED/REVEALED sessions. Pre-Lock browser/API contract tests scan for the
+historical identity strings.
+
+M1 `localStorage` holds only session ID, user thought strings, and public lifecycle
+status. If server memory is missing, the restore use case deterministically replays
+those thoughts through the same Judge and policy. This bridge does not create device
+identity or a second authority. M2 replaces both stores with server persistence.
+
+Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when their actual
+use cases start. M1 has no identity, external AI call, experiment, PWA service
+worker, production data, or deployment.

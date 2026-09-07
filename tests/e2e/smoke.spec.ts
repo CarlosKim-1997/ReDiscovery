@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("foundation page loads accessibly without external service calls", async ({ page }) => {
+test("home loads accessibly without external service calls", async ({ page }) => {
   const errors: string[] = [];
   const externalRequests: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -13,7 +13,7 @@ test("foundation page loads accessibly without external service calls", async ({
   await page.goto("/");
   await expect(page).toHaveTitle("G1");
   await expect(page.getByRole("main")).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("오늘의 생각을 위한 공간");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("이름을 알기 전에");
   await expect(page.locator("html")).toHaveAttribute("lang", "ko");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.reload();

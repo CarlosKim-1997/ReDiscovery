@@ -1,7 +1,7 @@
-# G1 — M0 Foundation
+# G1 — M1 Deterministic Walking Skeleton
 
 G1 Master Codex Handoff Packet v1이 canonical implementation specification이다.
-현재 구현 범위는 **M0만**이다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
+현재 구현 범위는 **M1까지**다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
 
 ## 실행
 
@@ -33,7 +33,9 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-<http://localhost:3000>에서 임시 준비 화면을 확인한다. 게임은 M1부터 구현한다.
+<http://localhost:3000>에서 Conway 단일 fixture의 deterministic Daily를 실행한다.
+서버 메모리가 권위 상태이며 브라우저 reload 복구를 위해 공개 세션 snapshot만
+`localStorage`에 저장한다. 이는 M1 전용이고 M2에서 서버 영속성으로 교체한다.
 `GET /api/health`는 서버 프로세스의 liveness와 서버 시각만 반환한다.
 외부 서비스의 readiness, 비용 circuit 상태, Daily availability를 의미하지 않는다.
 
@@ -79,3 +81,4 @@ M0에는 `NEXT_PUBLIC_*` 값, DB·OAuth·Redis·OpenAI 키가 필요 없다. Ope
 - [Decision record](docs/decisions/0001-m0-foundation.md): M0의 구체적인 선택과 보류 항목
 - [Specification authority](docs/spec-authority.md): canonical 원문 우선순위와 구현 범위
 - [M0 verification](docs/milestones/M0.md): 변경 파일, 검증 결과, 남은 문제
+- [M1 walking skeleton](docs/milestones/M1.md): 상태 흐름, FakeJudge, resume, Reveal, 검증
