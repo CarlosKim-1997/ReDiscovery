@@ -5,8 +5,28 @@ G1 Master Codex Handoff Packet v1이 canonical implementation specification이�
 
 ## 실행
 
-Node 버전은 `.node-version`, pnpm 버전은 `package.json#packageManager`를 따른다.
-해당 Node 및 pnpm을 준비한 뒤:
+**프로젝트 명령을 실행하기 전에** `.node-version`의 Node **24.19.0**을 설치하고
+현재 터미널에서 활성화한다. 기존 Node 버전 관리자 또는 공식 Node 배포판을 사용하면 된다.
+`.node-version` 파일만으로 터미널의 Node가 자동 전환되지는 않는다.
+
+그다음 `package.json#packageManager`에 고정된 pnpm **11.19.0**을 설치·활성화한다.
+새 터미널에서도 다음 결과를 먼저 확인한다:
+
+```sh
+node --version
+# v24.19.0
+pnpm --version
+# 11.19.0
+pnpm check:runtime
+```
+
+지원 범위는 `package.json#engines.node`의 `>=24.19.0 <25`이며,
+재현 기준과 CI는 `.node-version`의 정확한 버전이다.
+프로젝트 명령은 실제 실행 Node를 먼저 검사하고, 지원 범위 밖이면 실행을 중단한다.
+pnpm 자체가 별도 Node를 사용하더라도 프로젝트 명령의 Node 검사를 생략하지 않는다.
+검사 실패 시 현재 터미널의 Node 활성화/PATH를 바로잡는다. 런타임을 자동 설치하거나 전환하지 않는다.
+
+버전 확인을 마친 뒤:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -35,6 +55,8 @@ Desktop Chromium과 mobile Chromium에서 페이지, 새로고침, reduced motio
 이는 아직 구현하지 않은 게임 접근성·키보드·Reveal 동작의 검증을 의미하지 않는다.
 
 GitHub Actions는 동일한 검사를 Linux에서 수행하도록 구성되어 있다.
+`actions/setup-node`는 `.node-version`을 읽고, `pnpm/action-setup`은
+`packageManager`를 사용한다. 의존성은 `pnpm-lock.yaml`과 `--frozen-lockfile`로 재현한다.
 호스팅은 명세의 Vercel 기준을 따른다. M0에서 배포·외부 계정 생성은 수행하지 않는다.
 
 ## 환경 변수
