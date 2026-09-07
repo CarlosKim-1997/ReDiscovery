@@ -59,6 +59,7 @@ test("Scenario C: wrong path receives Nudge, Rescue, and still reveals", async (
 test("direct Result navigation preserves the staged Reveal event", async ({ page }) => {
   await start(page);
   await submit(page, full);
+  await expect(page.getByRole("button", { name: "내 생각 잠그고 공개하기" })).toBeVisible();
   const id = page.url().split("/").at(-1);
   const lockResponse = await page.request.post(`/api/demo/sessions/${id}/lock`);
   expect(lockResponse.ok()).toBe(true);
