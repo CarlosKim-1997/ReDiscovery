@@ -53,6 +53,14 @@ at server composition. No secrets or config object enter HTTP responses.
 
 ## Milestone scope
 
+M0 includes the Master Packet §9 vocabulary in `domain/play/vocabulary.ts`
+(AttemptType, PlayStatus, PlayStage, NodeStatus, AnswerType, Ambiguity) and
+`domain/reveal/vocabulary.ts` (ComparisonStatus). Frozen `as const` string tuples
+provide runtime values; indexed-access type aliases provide exact literal unions.
+They compare and serialize as the canonical strings, without framework/vendor
+dependencies, numeric enums, database mappings, or state transition behavior.
+Contract tests pin all seven serialized vocabularies and their exact union types.
+
 Store/Judge/Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when
 their application use cases are implemented. M0 has no sessions, content,
 identity, AI call, experiment, PWA service worker, production data, or deployment.
