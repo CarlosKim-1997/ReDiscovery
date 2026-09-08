@@ -4,6 +4,7 @@ const serverConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_ENV: z.enum(["local", "test", "staging", "production"]).default("local"),
   CONFIG_VERSION: z.string().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/).default("m0-v1"),
+  DATABASE_URL: z.string().min(1).default("postgresql://postgres:postgres@127.0.0.1:54322/postgres"),
 });
 
 export type ServerConfig = Readonly<z.infer<typeof serverConfigSchema>>;

@@ -1,5 +1,6 @@
 import { resolveEvidence, type PlaySession } from "@/domain/play/session";
-import { canApplyCorrectiveRescue, M1_MAX_TURNS, selectRepresentativeEvidence } from "@/domain/play/policy";
+import { canApplyCorrectiveRescue, selectRepresentativeEvidence } from "@/domain/play/policy";
+import type { ServerPolicy } from "@/domain/content/schema";
 
 export interface PublicSessionView {
   readonly id: string;
@@ -14,7 +15,7 @@ export interface PublicSessionView {
   readonly revealCompleted: boolean;
 }
 
-export function toPublicSessionView(session: PlaySession): PublicSessionView {
+export function toPublicSessionView(session: PlaySession, policy: ServerPolicy): PublicSessionView {
   const representativeEvidence = session.lockEvidence
     ?? (session.status === "LOCKABLE" ? selectRepresentativeEvidence(session) : undefined);
   return {
@@ -22,8 +23,8 @@ export function toPublicSessionView(session: PlaySession): PublicSessionView {
     status: session.status,
     stage: session.stage,
     turnCount: session.turnCount,
-    maxTurns: M1_MAX_TURNS,
-    correctiveRescueAvailable: canApplyCorrectiveRescue(session),
+    maxTurns: policy.max_turns,
+    correctiveRescueAvailable: canApplyCorrectiveRescue(session, policy),
     thoughts: session.thoughts,
     guidance: session.guidance,
     ...(representativeEvidence ? { representativeThought: resolveEvidence(session, representativeEvidence) } : {}),

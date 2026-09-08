@@ -3,18 +3,18 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PublicSessionView } from "@/application/play/session-view";
-import { loadDemoSession, saveDemoSnapshot } from "./demo-storage";
-import type { DemoPayload } from "./demo-types";
+import { loadSession } from "./session-client";
+import type { DailyPayload } from "./session-types";
 
 export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
-  const [payload, setPayload] = useState<DemoPayload | null>(null);
+  const [payload, setPayload] = useState<DailyPayload | null>(null);
   const [thought, setThought] = useState("");
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadDemoSession(sessionId).then((loaded) => {
+    void loadSession(sessionId).then((loaded) => {
       if (loaded.session.status === "LOCKED") router.replace(`/reveal/${sessionId}`);
       else if (loaded.session.status === "REVEALED") router.replace(`/result/${sessionId}`);
       else setPayload(loaded);
@@ -27,7 +27,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     setEvaluating(true);
     setError(null);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const response = await fetch(`/api/demo/sessions/${sessionId}/thoughts`, {
+    const response = await fetch(`/api/play-sessions/${sessionId}/answers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ thought }),
@@ -39,25 +39,21 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     }
     const result = await response.json() as { session: PublicSessionView };
     setPayload((current) => current ? { ...current, session: result.session } : current);
-    saveDemoSnapshot(result.session);
     setThought("");
     setEvaluating(false);
   }
 
   async function lock() {
-    const response = await fetch(`/api/demo/sessions/${sessionId}/lock`, { method: "POST" });
+    const response = await fetch(`/api/play-sessions/${sessionId}/lock`, { method: "POST" });
     if (!response.ok) return setError("아직 생각을 잠글 수 없습니다.");
-    const { session } = await response.json() as { session: PublicSessionView };
-    saveDemoSnapshot(session);
     router.push(`/reveal/${sessionId}`);
   }
 
   async function continueWithHelp() {
-    const response = await fetch(`/api/demo/sessions/${sessionId}/recovery`, { method: "POST" });
+    const response = await fetch(`/api/play-sessions/${sessionId}/recovery`, { method: "POST" });
     if (!response.ok) return setError("도움을 이어가지 못했습니다.");
     const { session } = await response.json() as { session: PublicSessionView };
     setPayload((current) => current ? { ...current, session } : current);
-    saveDemoSnapshot(session);
   }
 
   if (error && !payload) return <main className="page-shell"><p role="alert">{error}</p></main>;

@@ -1,5 +1,4 @@
 import type { AnswerType, Ambiguity, NodeStatus } from "./vocabulary";
-import type { ConwayNodeId } from "./session";
 
 export interface JudgeEvidence {
   readonly start: number;
@@ -7,7 +6,7 @@ export interface JudgeEvidence {
 }
 
 export interface JudgeNodeResult {
-  readonly nodeId: ConwayNodeId;
+  readonly nodeId: string;
   readonly status: NodeStatus;
   readonly evidence?: JudgeEvidence;
 }

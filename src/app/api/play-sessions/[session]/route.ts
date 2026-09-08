@@ -1,0 +1,2 @@
+import { getOwned } from "@/application/play/daily-game";import { services } from "@/server/container";import { currentDevice } from "../../_device";
+export async function GET(_r:Request,{params}:{params:Promise<{session:string}>}){const d=await currentDevice();const {session}=await params;const payload=await getOwned(services,d.id,session);return Response.json(payload??{error:"SESSION_NOT_FOUND"},{status:payload?200:404,headers:{"Cache-Control":"no-store"}});}

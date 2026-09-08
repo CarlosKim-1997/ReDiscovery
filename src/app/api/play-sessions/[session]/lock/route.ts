@@ -1,0 +1,2 @@
+import { lock } from "@/application/play/daily-game";import { services } from "@/server/container";import { currentDevice } from "../../../_device";
+export async function POST(_r:Request,{params}:{params:Promise<{session:string}>}){try{const d=await currentDevice();const session=await lock(services,d.id,(await params).session);return Response.json(session?{session}:{error:"SESSION_NOT_FOUND"},{status:session?200:404});}catch(e){return Response.json({error:e instanceof Error?e.message:"INVALID_STATE"},{status:409});}}

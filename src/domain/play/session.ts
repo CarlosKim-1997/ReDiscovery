@@ -1,13 +1,5 @@
 import type { AttemptType, NodeStatus, PlayStage, PlayStatus } from "./vocabulary";
 
-export const CONWAY_NODE_IDS = Object.freeze([
-  "TEAM_BOUNDARIES",
-  "COMMUNICATION_FRICTION",
-  "DECISION_CLUSTERING",
-  "SYSTEM_RESEMBLANCE",
-] as const);
-export type ConwayNodeId = (typeof CONWAY_NODE_IDS)[number];
-
 export interface SubmittedThought {
   readonly id: string;
   readonly turn: number;
@@ -22,7 +14,7 @@ export interface EvidenceRef {
 }
 
 export interface NodeDiscovery {
-  readonly nodeId: ConwayNodeId;
+  readonly nodeId: string;
   readonly status: NodeStatus;
   readonly firstStage?: PlayStage;
   readonly evidence?: EvidenceRef;
@@ -31,11 +23,15 @@ export interface NodeDiscovery {
 
 export interface GuidanceEvent {
   readonly stage: Exclude<PlayStage, "BLIND">;
+  readonly key: string;
   readonly text: string;
 }
 
 export interface PlaySession {
   readonly id: string;
+  readonly dailyId: string;
+  readonly contentVersionId: string;
+  readonly anonymousDeviceId: string;
   readonly attemptType: AttemptType;
   readonly status: PlayStatus;
   readonly stage: PlayStage;
@@ -45,19 +41,24 @@ export interface PlaySession {
   readonly guidance: readonly GuidanceEvent[];
   readonly lockEvidence?: EvidenceRef;
   readonly revealCompleted: boolean;
+  readonly stateVersion: number;
 }
 
-export function createPlaySession(id: string): PlaySession {
+export function createPlaySession(input: { id: string; dailyId: string; contentVersionId: string; anonymousDeviceId: string; nodeIds: readonly string[] }): PlaySession {
   return {
-    id,
-    attemptType: "PRACTICE",
+    id: input.id,
+    dailyId: input.dailyId,
+    contentVersionId: input.contentVersionId,
+    anonymousDeviceId: input.anonymousDeviceId,
+    attemptType: "OFFICIAL",
     status: "THINKING",
     stage: "BLIND",
     turnCount: 0,
     thoughts: [],
-    discoveries: CONWAY_NODE_IDS.map((nodeId) => ({ nodeId, status: "ABSENT" })),
+    discoveries: input.nodeIds.map((nodeId) => ({ nodeId, status: "ABSENT" })),
     guidance: [],
     revealCompleted: false,
+    stateVersion: 0,
   };
 }
 

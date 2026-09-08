@@ -1,0 +1,2 @@
+import { startOfficial } from "@/application/play/daily-game";import { services } from "@/server/container";import { currentDevice } from "../_device";
+export const runtime="nodejs";export async function POST(){try{const d=await currentDevice();const payload=await startOfficial(services,d.id);return Response.json(payload??{error:"DAILY_NOT_FOUND"},{status:payload?200:404,headers:{"Cache-Control":"no-store"}});}catch{return Response.json({error:"REQUEST_FAILED"},{status:500});}}

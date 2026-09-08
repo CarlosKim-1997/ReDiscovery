@@ -1,6 +1,6 @@
 # Adapters
 
-M0 implements `system-clock/SystemClock`. M1 adds `FakeJudgeAdapter` and
-`InMemoryPrimaryStore`, both deterministic and free of network/vendor dependencies.
-Supabase, Supabase Auth, Upstash, OpenAI, Turnstile, and Sentry code will belong here
-when their milestone starts. No vendor SDKs are installed or invoked through M1.
+M2 composes `SystemClock`, deterministic `FakeJudgeAdapter`, `NodeIdentityAdapter`,
+and the server-only `PostgresPrimaryStore`. The direct PostgreSQL protocol client is
+isolated here; no database dependency crosses into ports/application/domain.
+Supabase Auth, Upstash, OpenAI, Turnstile, and Sentry remain unimplemented.

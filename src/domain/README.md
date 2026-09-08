@@ -1,8 +1,7 @@
 # Domain
 
-Pure content/play/reveal/identity rules belong here when their milestones start.
-M0 supplies only the canonical vocabulary in `play/vocabulary.ts` and
-`reveal/vocabulary.ts`: frozen string tuples and their derived literal union types.
-These modules have no imports or framework/vendor dependencies.
-M0 deliberately defines no game entities, policy, Judge schema, or content.
+Pure content/play/reveal/identity rules belong here. M2 adds the validated four-layer
+approved-content contract and generic, content-driven play policy while retaining the
+canonical vocabularies. These modules have no framework/vendor dependencies beyond
+the explicitly allowed Zod validation library.
 Dependencies may point only to this layer and pure `shared` utilities.

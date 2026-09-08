@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadDemoSession } from "./demo-storage";
-import type { RevealView } from "./demo-types";
+import { loadSession } from "./session-client";
+import type { RevealView } from "./session-types";
 
 export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
@@ -13,14 +13,14 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
   useEffect(() => {
     async function load() {
       try {
-        const payload = await loadDemoSession(sessionId);
+        const payload = await loadSession(sessionId);
         if (payload.session.status === "LOCKED") {
           return router.replace(`/reveal/${sessionId}`);
         }
         if (payload.session.status !== "REVEALED") {
           return router.replace(`/play/${sessionId}`);
         }
-        const response = await fetch(`/api/demo/sessions/${sessionId}/reveal`, { cache: "no-store" });
+        const response = await fetch(`/api/play-sessions/${sessionId}/reveal`, { cache: "no-store" });
         if (!response.ok) throw new Error("REVEAL_LOAD_FAILED");
         setReveal((await response.json() as { reveal: RevealView }).reveal);
       } catch {

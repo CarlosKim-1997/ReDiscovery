@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadDemoSession, saveDemoSnapshot } from "./demo-storage";
-import type { RevealView } from "./demo-types";
-import type { PublicSessionView } from "@/application/play/session-view";
+import { loadSession } from "./session-client";
+import type { RevealView } from "./session-types";
 
 export const REVEAL_TIMING_MS = Object.freeze({ normal: [0, 450, 650, 650, 650, 600], reduced: [0, 40, 40, 40, 40, 40] });
 
@@ -18,10 +17,10 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
     let cancelled = false;
     async function run() {
       try {
-        const payload = await loadDemoSession(sessionId);
+        const payload = await loadSession(sessionId);
         if (payload.session.status === "REVEALED") return router.replace(`/result/${sessionId}`);
         if (payload.session.status !== "LOCKED") return router.replace(`/play/${sessionId}`);
-        const response = await fetch(`/api/demo/sessions/${sessionId}/reveal`, { cache: "no-store" });
+        const response = await fetch(`/api/play-sessions/${sessionId}/reveal`, { cache: "no-store" });
         if (!response.ok) throw new Error("REVEAL_NOT_ALLOWED");
         const data = await response.json() as { reveal: RevealView };
         if (cancelled) return;
@@ -33,10 +32,9 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
           if (cancelled) return;
           setStep(index);
         }
-        const complete = await fetch(`/api/demo/sessions/${sessionId}/reveal`, { method: "POST" });
+        const complete = await fetch(`/api/play-sessions/${sessionId}/reveal`, { method: "POST" });
         if (!complete.ok) throw new Error("REVEAL_COMPLETE_FAILED");
-        const completed = await complete.json() as { session: PublicSessionView };
-        saveDemoSnapshot(completed.session);
+        await complete.json();
         router.replace(`/result/${sessionId}`);
       } catch {
         if (!cancelled) setError("공개 화면을 불러오지 못했습니다.");

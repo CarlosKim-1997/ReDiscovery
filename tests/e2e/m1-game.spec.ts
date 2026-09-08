@@ -7,7 +7,7 @@ const misconception = "조직이나 소통은 상관없고 기술만 결과를 �
 
 async function start(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "오늘의 문제 시작" }).click();
+  await page.getByRole("button", { name: "오늘의 문제 시작 또는 이어 하기" }).click();
   await expect(page).toHaveURL(/\/play\/[0-9a-f-]+$/);
 }
 
@@ -61,7 +61,7 @@ test("direct Result navigation preserves the staged Reveal event", async ({ page
   await submit(page, full);
   await expect(page.getByRole("button", { name: "내 생각 잠그고 공개하기" })).toBeVisible();
   const id = page.url().split("/").at(-1);
-  const lockResponse = await page.request.post(`/api/demo/sessions/${id}/lock`);
+  const lockResponse = await page.request.post(`/api/play-sessions/${id}/lock`);
   expect(lockResponse.ok()).toBe(true);
 
   await page.goto(`/result/${id}`);
@@ -89,6 +89,7 @@ test("final-turn contradiction requires bounded corrective Rescue before Reveal"
 test("Scenario D: unfinished session resumes after reload", async ({ page }) => {
   await start(page);
   await submit(page, partial);
+  await expect(page.getByLabel("REFLECT 도움")).toBeVisible();
   const url = page.url();
   await page.reload();
   await expect(page).toHaveURL(url);
@@ -120,11 +121,11 @@ test("Scenario F: reduced motion preserves ordered information and finishes quic
 test("Reveal secret API is forbidden before Lock and secrets are absent pre-Lock", async ({ page }) => {
   const responses: string[] = [];
   page.on("response", async (response) => {
-    if (response.url().includes("/api/demo/")) responses.push(await response.text());
+    if (response.url().includes("/api/")) responses.push(await response.text());
   });
   await start(page);
   const id = page.url().split("/").at(-1);
-  const beforeLock = await page.request.get(`/api/demo/sessions/${id}/reveal`);
+  const beforeLock = await page.request.get(`/api/play-sessions/${id}/reveal`);
   expect(beforeLock.status()).toBe(409);
   const resourceUrls = await page.evaluate(() => performance.getEntriesByType("resource")
     .map((entry) => entry.name)

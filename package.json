@@ -2,8 +2,12 @@
   "name": "g1",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@11.19.0",
-  "engines": { "node": ">=24.19.0 <25", "pnpm": "11.19.0" },
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": "11.19.0"
+  },
   "scripts": {
     "check:runtime": "node tooling/check-runtime.mjs",
     "preinstall": "node tooling/check-runtime.mjs",
@@ -13,11 +17,15 @@
     "test": "node tooling/check-runtime.mjs && vitest run",
     "test:watch": "node tooling/check-runtime.mjs && vitest",
     "test:e2e": "node tooling/check-runtime.mjs && playwright test",
+    "content:validate": "node --experimental-strip-types tooling/content-tools.mts validate",
+    "db:migrate": "node --experimental-strip-types tooling/content-tools.mts migrate",
+    "content:seed": "node --experimental-strip-types tooling/content-tools.mts seed",
     "lint": "node tooling/check-runtime.mjs && eslint . --max-warnings=0",
     "typecheck": "node tooling/check-runtime.mjs && next typegen && tsc --noEmit"
   },
   "dependencies": {
     "next": "16.3.4",
+    "postgres": "3.4.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "0.0.1",

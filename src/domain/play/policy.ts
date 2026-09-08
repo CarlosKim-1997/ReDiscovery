@@ -1,15 +1,7 @@
 import type { JudgeVerdict } from "./judgment";
 import type { EvidenceRef, GuidanceEvent, NodeDiscovery, PlaySession, SubmittedThought } from "./session";
 import { PlayRuleError } from "./errors";
-
-export const M1_MAX_TURNS = 2;
-
-const guidanceCopy = {
-  REFLECT: "이미 짚은 소통의 차이를 한 걸음 더 밀어보세요. 그 차이가 설계 결정을 어디에 모이게 할까요?",
-  NUDGE: "사람들이 누구와 자주 이야기할 수 있는지 살펴보세요. 그 소통 경계가 설계에 어떤 흔적을 남길까요?",
-  CORRECTION: "기술 선택만으로는 반복되는 경계의 모양을 설명하기 어렵습니다. 팀 사이의 소통 비용도 함께 생각해보세요.",
-  RESCUE: "팀 안의 소통은 쉽고 팀 사이의 소통은 어렵습니다. 그래서 설계 결정도 팀 경계 안에서 모이고, 결과물의 구조가 조직 구조를 닮을 수 있습니다.",
-} as const;
+import type { ServerPolicy } from "@/domain/content/schema";
 
 export interface PolicyResult {
   readonly session: PlaySession;
@@ -55,45 +47,45 @@ function mergeDiscoveries(session: PlaySession, verdict: JudgeVerdict, thought: 
   });
 }
 
-function hasEnough(discoveries: readonly NodeDiscovery[]) {
-  const discovered = discoveries.filter(({ status }) => status === "DISCOVERED");
-  return discovered.length >= 3 && discovered.some(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE");
+function hasEnough(discoveries: readonly NodeDiscovery[], policy: ServerPolicy) {
+  const discovered = discoveries.filter(({ status, nodeId }) => status === "DISCOVERED" && policy.required_nodes.includes(nodeId));
+  return discovered.length >= policy.lock_threshold;
 }
 
-function chooseGuidance(session: PlaySession, discoveries: readonly NodeDiscovery[], verdict: JudgeVerdict): Exclude<GuidanceEvent["stage"], never> {
-  if (discoveries.some(({ status }) => status === "CONTRADICTED")) return "CORRECTION";
-  if (session.turnCount >= M1_MAX_TURNS) return "RESCUE";
+function chooseGuidance(session: PlaySession, discoveries: readonly NodeDiscovery[], verdict: JudgeVerdict, policy: ServerPolicy): Exclude<GuidanceEvent["stage"], never> {
+  if (discoveries.some(({ status, nodeId }) => status === "CONTRADICTED" && policy.blocking_nodes.includes(nodeId))) return "CORRECTION";
+  if (session.turnCount >= policy.max_turns) return "RESCUE";
   if (verdict.nodes.some(({ status }) => status === "PARTIAL" || status === "DISCOVERED")) return "REFLECT";
   return "NUDGE";
 }
 
-export function hasUnresolvedBlockingContradiction(session: PlaySession): boolean {
-  if (!session.discoveries.some(({ status }) => status === "CONTRADICTED")) return false;
+export function hasUnresolvedBlockingContradiction(session: PlaySession, policy: ServerPolicy): boolean {
+  if (!session.discoveries.some(({ status, nodeId }) => status === "CONTRADICTED" && policy.blocking_nodes.includes(nodeId))) return false;
   const lastCorrection = session.guidance.findLastIndex(({ stage }) => stage === "CORRECTION");
   const lastRescue = session.guidance.findLastIndex(({ stage }) => stage === "RESCUE");
   return lastCorrection < 0 || lastRescue <= lastCorrection;
 }
 
-export function canApplyCorrectiveRescue(session: PlaySession): boolean {
+export function canApplyCorrectiveRescue(session: PlaySession, policy: ServerPolicy): boolean {
   return session.status === "THINKING"
     && session.stage === "CORRECTION"
-    && session.turnCount >= M1_MAX_TURNS
-    && hasUnresolvedBlockingContradiction(session);
+    && session.turnCount >= policy.max_turns
+    && hasUnresolvedBlockingContradiction(session, policy);
 }
 
-export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict): PolicyResult {
+export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict, policy: ServerPolicy): PolicyResult {
   if (evaluating.status !== "EVALUATING") throw new PlayRuleError("INVALID_SESSION_STATE");
   const thought = evaluating.thoughts.at(-1);
   if (!thought) throw new PlayRuleError("INVALID_SESSION_STATE");
   const discoveries = mergeDiscoveries(evaluating, verdict, thought);
 
-  if (hasEnough(discoveries) && !discoveries.some(({ status }) => status === "CONTRADICTED")) {
+  if (hasEnough(discoveries, policy) && !discoveries.some(({ status, nodeId }) => status === "CONTRADICTED" && policy.blocking_nodes.includes(nodeId))) {
     return { session: { ...evaluating, discoveries, status: "LOCKABLE" }, outcome: "LOCKABLE" };
   }
 
-  const stage = chooseGuidance(evaluating, discoveries, verdict);
-  const guidance = { stage, text: guidanceCopy[stage] } as const;
-  const guidanceEvents = evaluating.guidance.some((event) => event.text === guidance.text)
+  const stage = chooseGuidance(evaluating, discoveries, verdict, policy);
+  const guidance = { stage, key: stage, text: policy.guidance[stage] } as const;
+  const guidanceEvents = evaluating.guidance.some((event) => event.key === guidance.key)
     ? evaluating.guidance
     : [...evaluating.guidance, guidance];
 
@@ -110,9 +102,9 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   };
 }
 
-export function applyCorrectiveRescue(session: PlaySession): PlaySession {
-  if (!canApplyCorrectiveRescue(session)) throw new PlayRuleError("INVALID_SESSION_STATE");
-  const guidance = { stage: "RESCUE", text: guidanceCopy.RESCUE } as const;
+export function applyCorrectiveRescue(session: PlaySession, policy: ServerPolicy): PlaySession {
+  if (!canApplyCorrectiveRescue(session, policy)) throw new PlayRuleError("INVALID_SESSION_STATE");
+  const guidance = { stage: "RESCUE", key: "RESCUE", text: policy.guidance.RESCUE } as const;
   return {
     ...session,
     status: "LOCKABLE",
@@ -129,9 +121,9 @@ export function selectRepresentativeEvidence(session: PlaySession): EvidenceRef 
   return { answerId: thought.id, spanStart: 0, spanEnd: thought.text.length };
 }
 
-export function lockPlaySession(session: PlaySession): PlaySession {
+export function lockPlaySession(session: PlaySession, policy: ServerPolicy): PlaySession {
   if (session.status !== "LOCKABLE") throw new PlayRuleError("INVALID_SESSION_STATE");
-  if (hasUnresolvedBlockingContradiction(session)) throw new PlayRuleError("INVALID_SESSION_STATE");
+  if (hasUnresolvedBlockingContradiction(session, policy)) throw new PlayRuleError("INVALID_SESSION_STATE");
   return { ...session, status: "LOCKED", lockEvidence: selectRepresentativeEvidence(session) };
 }
 

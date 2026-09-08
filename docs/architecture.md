@@ -1,4 +1,4 @@
-# Architecture through M1
+# Architecture through M2
 
 ```text
 Next.js route (src/app)
@@ -73,10 +73,14 @@ The Reveal fixture lives in a server-only module and is returned by a dedicated 
 only for LOCKED/REVEALED sessions. Pre-Lock browser/API contract tests scan for the
 historical identity strings.
 
-M1 `localStorage` holds only session ID, user thought strings, and public lifecycle
-status. If server memory is missing, the restore use case deterministically replays
-those thoughts through the same Judge and policy. This bridge does not create device
-identity or a second authority. M2 replaces both stores with server persistence.
+M2 replaces the M1 in-memory/replay bridge with `PostgresPrimaryStore`. SQL and the
+`postgres.js` import live only in `src/adapters`; routes obtain an anonymous device
+through a server-only cryptographic identity adapter and call the canonical Daily
+application use cases. The browser stores no submitted answers or session snapshot.
+
+Approved content is validated into PUBLIC_PLAY, JUDGE_RUBRIC, SERVER_POLICY, and
+REVEAL_CONTENT. Only PUBLIC_PLAY crosses the pre-Lock boundary. Generic domain
+policy consumes dynamic node IDs and SERVER_POLICY; FakeJudge consumes JUDGE_RUBRIC.
 
 Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when their actual
 use cases start. M1 has no identity, external AI call, experiment, PWA service

@@ -4,7 +4,7 @@ import { parseServerConfig } from "@/config/schema";
 describe("server configuration", () => {
   it("boots locally without credentials", () => {
     expect(parseServerConfig({})).toEqual({
-      NODE_ENV: "development", APP_ENV: "local", CONFIG_VERSION: "m0-v1",
+      NODE_ENV: "development", APP_ENV: "local", CONFIG_VERSION: "m0-v1", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
     });
   });
 
@@ -13,7 +13,7 @@ describe("server configuration", () => {
       NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2",
       PRIVATE_SECRET: "must-not-be-exported",
     });
-    expect(config).toEqual({ NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2" });
+    expect(config).toEqual({ NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres" });
     expect(Object.isFrozen(config)).toBe(true);
   });
 

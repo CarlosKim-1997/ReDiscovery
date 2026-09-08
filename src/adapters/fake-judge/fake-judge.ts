@@ -1,4 +1,3 @@
-import { CONWAY_NODE_IDS, type ConwayNodeId } from "@/domain/play/session";
 import type { JudgeNodeResult, JudgeVerdict } from "@/domain/play/judgment";
 import type { JudgePort } from "@/ports/judge";
 
@@ -7,14 +6,16 @@ interface EvidenceCoordinates {
   readonly end: number;
 }
 
-function result(nodeId: ConwayNodeId, status: JudgeNodeResult["status"], evidence: EvidenceCoordinates): JudgeNodeResult {
+function result(nodeId: string, status: JudgeNodeResult["status"], evidence: EvidenceCoordinates): JudgeNodeResult {
   return status === "ABSENT"
     ? { nodeId, status }
     : { nodeId, status, evidence };
 }
 
 export class FakeJudgeAdapter implements JudgePort {
-  async evaluate({ currentAnswer }: Parameters<JudgePort["evaluate"]>[0]): Promise<JudgeVerdict> {
+  async evaluate({ currentAnswer, rubric }: Parameters<JudgePort["evaluate"]>[0]): Promise<JudgeVerdict> {
+    if (rubric.discriminator !== "organizational-communication-structure-v1") throw new Error("UNSUPPORTED_FAKE_RUBRIC");
+    const nodeIds = rubric.nodes.map(({ id }) => id);
     const answer = currentAnswer.trim();
     const evidence = {
       start: currentAnswer.length - currentAnswer.trimStart().length,
@@ -33,11 +34,11 @@ export class FakeJudgeAdapter implements JudgePort {
       return {
         answerType: "REASONING",
         ambiguity: "NONE",
-        nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, nodeId === "SYSTEM_RESEMBLANCE" ? "CONTRADICTED" : "ABSENT", evidence)),
+        nodes: nodeIds.map((nodeId) => result(nodeId, nodeId === "SYSTEM_RESEMBLANCE" ? "CONTRADICTED" : "ABSENT", evidence)),
       };
     }
     if (full) {
-      return { answerType: "REASONING", ambiguity: "NONE", nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "DISCOVERED", evidence)) };
+      return { answerType: "REASONING", ambiguity: "NONE", nodes: nodeIds.map((nodeId) => result(nodeId, "DISCOVERED", evidence)) };
     }
     if (mentionsCommunication || (mentionsOrganization && mentionsBoundary)) {
       return {
@@ -54,7 +55,7 @@ export class FakeJudgeAdapter implements JudgePort {
     return {
       answerType: answer.length === 0 ? "EMPTY" : "REASONING",
       ambiguity: answer.length < 15 ? "TOO_SHORT" : "NONE",
-      nodes: CONWAY_NODE_IDS.map((nodeId) => result(nodeId, "ABSENT", evidence)),
+      nodes: nodeIds.map((nodeId) => result(nodeId, "ABSENT", evidence)),
     };
   }
 }
