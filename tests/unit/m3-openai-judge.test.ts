@@ -3,7 +3,7 @@ import raw from "../../content/approved/conway-law.v1.json";
 import { approvedContentSchema } from "@/domain/content/schema";
 import { validateJudgeVerdict } from "@/application/play/judge-verdict";
 import {
-  buildOpenAIResponseRequest, buildProviderVerdictSchema, OpenAIJudgeAdapter, PRIMARY_JUDGE_PROMPT_VERSION,
+  buildOpenAIJudgeClientOptions, buildOpenAIResponseRequest, buildProviderVerdictSchema, OpenAIJudgeAdapter, OpenAIResponsesJudgeTransport, PRIMARY_JUDGE_PROMPT_VERSION,
   type OpenAIJudgeTransport, type OpenAIJudgeTransportRequest,
 } from "@/adapters/openai-judge/openai-judge";
 import { JudgeExecutionError } from "@/ports/judge";
@@ -22,6 +22,7 @@ class ScriptedTransport implements OpenAIJudgeTransport {
 const run=(transport:ScriptedTransport,currentAnswer=answer)=>new OpenAIJudgeAdapter(transport,"candidate-model",()=>0).evaluate({rubric,currentAnswer,priorConfirmedState:[]});
 
 describe("M3 OpenAI Judge adapter",()=>{
+  it("forces SDK logging off even when OPENAI_LOG requests debug output",()=>{const previous=process.env.OPENAI_LOG;process.env.OPENAI_LOG="debug";try{expect(buildOpenAIJudgeClientOptions("secret")).toMatchObject({apiKey:"secret",maxRetries:0,logLevel:"off"});const transport=new OpenAIResponsesJudgeTransport("secret");expect((transport as unknown as {client:{logLevel:string}}).client.logLevel).toBe("off");}finally{if(previous===undefined)delete process.env.OPENAI_LOG;else process.env.OPENAI_LOG=previous;}});
   it("uses the configured model, Structured Outputs, and explicitly disables Responses API storage",()=>{const request=buildOpenAIResponseRequest({model:"configured-primary-model",systemPrompt:"classifier",input:"synthetic fixture",expectedNodeIds:ids});expect(request.model).toBe("configured-primary-model");expect(request.text.format).toBeDefined();expect(Object.hasOwn(request,"store")).toBe(true);expect(request.store).toBe(false);expect(request.tools).toEqual([]);expect(request.tool_choice).toBe("none");});
   it("builds a strict schema covering every rubric node",()=>{const schema=buildProviderVerdictSchema(ids);expect(schema.safeParse(valid).success).toBe(true);expect(schema.safeParse({...valid,nodes:valid.nodes.slice(1)}).success).toBe(false);expect(schema.safeParse({...valid,nodes:[...valid.nodes,{nodeId:"UNKNOWN",status:"ABSENT",evidenceText:null}]}).success).toBe(false);});
   it("maps structured output and records provider metadata",async()=>{const transport=new ScriptedTransport([valid]);const execution=await run(transport);expect(execution.verdict.nodes).toHaveLength(ids.length);expect(execution.attempts[0]).toMatchObject({provider:"openai",model:"candidate-model",promptVersion:PRIMARY_JUDGE_PROMPT_VERSION,schemaValid:true,totalTokens:15,providerRequestId:"req-1"});expect(transport.requests).toHaveLength(1);});

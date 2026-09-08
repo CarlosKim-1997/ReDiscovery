@@ -54,6 +54,10 @@ export interface OpenAIJudgeTransport {
   classify(request: OpenAIJudgeTransportRequest): Promise<OpenAIJudgeTransportResult>;
 }
 
+export function buildOpenAIJudgeClientOptions(apiKey: string): ConstructorParameters<typeof OpenAI>[0] {
+  return { apiKey, maxRetries: 0, logLevel: "off" };
+}
+
 export function buildOpenAIResponseRequest(request: OpenAIJudgeTransportRequest) {
   const schema = buildProviderVerdictSchema(request.expectedNodeIds);
   return {
@@ -69,7 +73,7 @@ export function buildOpenAIResponseRequest(request: OpenAIJudgeTransportRequest)
 
 export class OpenAIResponsesJudgeTransport implements OpenAIJudgeTransport {
   private readonly client: OpenAI;
-  constructor(apiKey: string) { this.client = new OpenAI({ apiKey, maxRetries: 0 }); }
+  constructor(apiKey: string) { this.client = new OpenAI(buildOpenAIJudgeClientOptions(apiKey)); }
 
   async classify(request: OpenAIJudgeTransportRequest): Promise<OpenAIJudgeTransportResult> {
     const result = await this.client.responses.parse(buildOpenAIResponseRequest(request)).withResponse();

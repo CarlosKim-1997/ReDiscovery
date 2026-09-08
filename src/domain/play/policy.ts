@@ -2,6 +2,7 @@ import type { JudgeVerdict } from "./judgment";
 import type { EvidenceRef, GuidanceEvent, NodeDiscovery, PlaySession, SubmittedThought } from "./session";
 import { PlayRuleError } from "./errors";
 import type { ServerPolicy } from "@/domain/content/schema";
+import { isSemanticLockEligible, mergeSemanticNodeStatus } from "./semantic-state";
 
 export interface PolicyResult {
   readonly session: PlaySession;
@@ -23,13 +24,14 @@ function mergeDiscoveries(session: PlaySession, verdict: JudgeVerdict, thought: 
   return session.discoveries.map((current) => {
     const incoming = verdict.nodes.find(({ nodeId }) => nodeId === current.nodeId);
     if (!incoming || incoming.status === "ABSENT") return current;
-    if (incoming.status === "CONTRADICTED") {
+    const mergedStatus = mergeSemanticNodeStatus(current.status, incoming.status);
+    if (mergedStatus === "CONTRADICTED") {
       const contradictionEvidence: EvidenceRef | undefined = incoming.evidence
         ? { answerId: thought.id, spanStart: incoming.evidence.start, spanEnd: incoming.evidence.end }
         : undefined;
       return {
         ...current,
-        status: "CONTRADICTED",
+        status: mergedStatus,
         ...(contradictionEvidence ? { contradictionEvidence } : {}),
       };
     }
@@ -40,16 +42,11 @@ function mergeDiscoveries(session: PlaySession, verdict: JudgeVerdict, thought: 
     const firstStage = incoming.status === "DISCOVERED" ? thought.stage : current.firstStage;
     return {
       nodeId: current.nodeId,
-      status: incoming.status,
+      status: mergedStatus,
       ...(firstStage ? { firstStage } : {}),
       ...(evidence ? { evidence } : {}),
     };
   });
-}
-
-function hasEnough(discoveries: readonly NodeDiscovery[], policy: ServerPolicy) {
-  const discovered = discoveries.filter(({ status, nodeId }) => status === "DISCOVERED" && policy.required_nodes.includes(nodeId));
-  return discovered.length >= policy.lock_threshold;
 }
 
 function chooseGuidance(session: PlaySession, discoveries: readonly NodeDiscovery[], verdict: JudgeVerdict, policy: ServerPolicy): Exclude<GuidanceEvent["stage"], never> {
@@ -79,7 +76,7 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   if (!thought) throw new PlayRuleError("INVALID_SESSION_STATE");
   const discoveries = mergeDiscoveries(evaluating, verdict, thought);
 
-  if (hasEnough(discoveries, policy) && !discoveries.some(({ status, nodeId }) => status === "CONTRADICTED" && policy.blocking_nodes.includes(nodeId))) {
+  if (isSemanticLockEligible(discoveries, policy)) {
     return { session: { ...evaluating, discoveries, status: "LOCKABLE" }, outcome: "LOCKABLE" };
   }
 
