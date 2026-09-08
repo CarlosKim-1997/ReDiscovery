@@ -13,6 +13,7 @@ test("anonymous identity is HttpOnly and owns exactly one current Official sessi
 });
 
 test("browser clock disagreement cannot select another Daily",async({page})=>{
+  const serverDaily=(await (await page.request.get("/api/daily")).json()).daily.canonicalDate;
   await page.addInitScript(()=>{const NativeDate=Date;class AlteredDate extends NativeDate{constructor(...args:ConstructorParameters<typeof Date>){super(...(args.length?args:["2035-01-01T00:00:00Z"] as ConstructorParameters<typeof Date>));}static now(){return new NativeDate("2035-01-01T00:00:00Z").valueOf();}};Object.defineProperty(window,"Date",{value:AlteredDate});});
-  const response=await page.request.get("/api/daily");expect((await response.json()).daily.canonicalDate).toBe("2026-09-08");
+  const response=await page.request.get("/api/daily");const selected=(await response.json()).daily.canonicalDate;expect(selected).toBe(serverDaily);expect(selected).not.toBe("2035-01-01");
 });

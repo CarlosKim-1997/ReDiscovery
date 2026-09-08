@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "overrides": [
+    {
+      "case_ids": ["seed-013", "messy-colloquial-01"],
+      "node_statuses": {
+        "DECISION_CLUSTERING": {"from": "DISCOVERED", "to": "PARTIAL"}
+      },
+      "reason": "Building or performing functions together is relevant but does not itself establish actual local design or decision partitioning."
+    },
+    {
+      "case_ids": ["messy-resemblance-only-01", "messy-resemblance-only-02", "messy-resemblance-only-04"],
+      "node_statuses": {
+        "SYSTEM_RESEMBLANCE": {"from": "DISCOVERED", "to": "PARTIAL"}
+      },
+      "reason": "Bare structural similarity or overlap does not frame the output structure as downstream of or reflecting organizational or communication structure."
+    }
+  ]
+}

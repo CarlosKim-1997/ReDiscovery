@@ -14,6 +14,15 @@ export interface UnvalidatedJudgeVerdict {
   readonly nodes: readonly UnvalidatedJudgeNodeResult[];
 }
 
+export const JUDGE_FAILURE_CATEGORIES = [
+  "STRUCTURED_OUTPUT_INVALID",
+  "NODE_SET_INVALID",
+  "STATUS_EVIDENCE_INVALID",
+  "EVIDENCE_NOT_LITERAL",
+  "EVIDENCE_NOT_UNIQUE",
+] as const;
+export type JudgeFailureCategory = (typeof JUDGE_FAILURE_CATEGORIES)[number];
+
 export interface JudgeAttempt {
   readonly attempt: number;
   readonly provider: string;
@@ -21,6 +30,7 @@ export interface JudgeAttempt {
   readonly promptVersion: string;
   readonly schemaValid: boolean;
   readonly resultStatus: "SUCCEEDED" | "PROVIDER_ERROR" | "SCHEMA_ERROR";
+  readonly failureCategory?: JudgeFailureCategory;
   readonly inputTokens?: number;
   readonly outputTokens?: number;
   readonly totalTokens?: number;

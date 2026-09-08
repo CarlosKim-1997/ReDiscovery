@@ -67,8 +67,10 @@ pnpm eval:judge
 ```
 
 The v2 manifest selects `judge-dev-v2`, `conway-law` content version 2, and
-`judge-v2`; the evaluator rejects a prompt mismatch. Do not put the key in a file
-or CI. This repository task does not execute that live command.
+`judge-v2`. The v3 development suite is selected with `JUDGE_EVAL_SUITE=v3` and
+recursively inherits v2 and the frozen v1 surface corpus. The evaluator rejects
+prompt mismatches, inheritance cycles/escapes, stale overrides, and content identity
+mismatches. Do not put the key in a file or CI. M3-B2 does not execute a live run.
 
 평가 보고서는 `artifacts/eval/judge/`에 생성되며 원문 답변·프롬프트·공급자 응답은 포함하지 않는다.
 
@@ -111,3 +113,6 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [Judge v1 Luna baseline](docs/evals/judge-v1-luna-baseline.md): frozen first live-provider result
 - [Judge v2 semantic contract](docs/evals/judge-v2-semantic-contract.md): independent status/ambiguity rules
 - [Judge v2 label audit](docs/evals/judge-v2-label-audit.md): every audited v1→v2 label change
+- [Judge v2 Luna development baseline](docs/evals/judge-v2-luna-dev-baseline.md): frozen first live v2 result
+- [Judge v3 semantic contract](docs/evals/judge-v3-semantic-contract.md): causal direction, threshold audit, and v2→v3 delta
+- [M3-B2 decision record](docs/decisions/0004-m3-b2-v3-calibration.md): versioning, inheritance, diagnostics, and production isolation

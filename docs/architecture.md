@@ -103,10 +103,11 @@ restores the prior gameplay state while incrementing `state_version`. `ai_runs`
 retains only non-raw operational metadata; its answer foreign key becomes null if
 the reservation is rolled back.
 
-M3-B1 adds immutable prompt selection inside the same adapter. Its constructor
-defaults to the accepted `judge-v1`, which is therefore still used by the runtime
-composition root. Evaluation may explicitly select `judge-v2`; the chosen prompt
-version is carried into each transport request and attempt record. The evaluator
+M3-B1 adds a provider-independent immutable prompt catalog under `src/shared`.
+The OpenAI adapter constructor defaults to the accepted `judge-v1`, which is
+therefore still used by the runtime composition root. Evaluation may explicitly
+select `judge-v2`; the chosen prompt version is carried into each transport request
+and attempt record. The evaluator
 loads dataset, content, and expected prompt identities from a versioned manifest
 and rejects mismatches before any provider call.
 
@@ -115,3 +116,12 @@ manifest names `judge-dev-v2`, content version 2, and `judge-v2`; its override
 ledger verifies every old label before applying an audited semantic change.
 `conway-law.v2.json` copies PUBLIC_PLAY, SERVER_POLICY, and REVEAL_CONTENT unchanged
 and sharpens only JUDGE_RUBRIC. Daily schedule entries remain on content version 1.
+
+M3-B2 adds `judge-v3` and `conway-law.v3.json` as development-only candidates.
+The v3 system prompt is limited to universal semantics while content-specific
+thresholds live in JUDGE_RUBRIC. Evaluation suites resolve recursive, confined,
+cycle-checked inheritance (`v3 → v2 → v1`) with stale override detection.
+Redacted `ai_runs.failure_category` distinguishes structured-output, node-set,
+status/evidence, non-literal, and non-unique evidence failures without retaining
+raw answers, prompts, evidence, or provider bodies. Runtime composition and the
+Daily schedule continue to select v1; deterministic policy still owns Lock.

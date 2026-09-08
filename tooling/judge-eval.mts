@@ -3,14 +3,13 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { approvedContentSchema } from "../src/domain/content/schema.ts";
-import { validateJudgeVerdict } from "../src/application/play/judge-verdict.ts";
+import { JudgeVerdictValidationError, validateJudgeVerdict } from "../src/application/play/judge-verdict.ts";
 import {
-  JUDGE_PROMPT_VERSIONS,
   OpenAIJudgeAdapter,
   OpenAIResponsesJudgeTransport,
-  type JudgePromptVersion,
 } from "../src/adapters/openai-judge/openai-judge.ts";
-import { JudgeExecutionError } from "../src/ports/judge.ts";
+import { JUDGE_PROMPT_VERSIONS, type JudgePromptVersion } from "../src/shared/judge-prompts.ts";
+import { JUDGE_FAILURE_CATEGORIES, JudgeExecutionError, type JudgeFailureCategory } from "../src/ports/judge.ts";
 import { contentVersionHash } from "./content-tools.mts";
 import { isSemanticLockEligible, mergeSemanticNodeStates } from "../src/domain/play/semantic-state.ts";
 
@@ -34,14 +33,14 @@ async function loadBaseCases(directory:string,manifest:EvalManifest):Promise<Cas
   })))];
 }
 
-function applyChange<T>(actual:T,change:Change<T>,label:string):T{if(actual!==change.from)throw new Error(`${label}: expected frozen v1 value ${change.from}, found ${actual}`);return change.to;}
+function applyChange<T>(actual:T,change:Change<T>,label:string):T{if(actual!==change.from)throw new Error(`${label}: stale override expected ${change.from}, found ${actual}`);return change.to;}
 
 async function applyLabelOverrides(cases:Case[],file:string):Promise<Case[]> {
   const ledger=JSON.parse(await readFile(file,"utf8")) as {schema_version:number;overrides:LabelOverride[]};
   if(ledger.schema_version!==1)throw new Error("Unsupported label override schema");
   const byId=new Map(cases.map(testCase=>[testCase.id,{...testCase,expected_node_statuses:{...testCase.expected_node_statuses},...(testCase.expected_evidence?{expected_evidence:{...testCase.expected_evidence}}:{}),...(testCase.evidence_terms?{evidence_terms:{...testCase.evidence_terms}}:{})}]));
   for(const override of ledger.overrides){
-    if(!override.reason.trim())throw new Error("Every v2 label override requires a reason");
+    if(!override.reason.trim())throw new Error("Every label override requires a reason");
     for(const id of override.case_ids){
       const testCase=byId.get(id);if(!testCase)throw new Error(`Unknown label override case: ${id}`);
       if(override.answer_type)testCase.expected_answer_type=applyChange(testCase.expected_answer_type,override.answer_type,`${id} answer_type`);
@@ -60,10 +59,17 @@ async function applyLabelOverrides(cases:Case[],file:string):Promise<Case[]> {
 export async function loadEvalManifest(directory:string):Promise<EvalManifest>{return JSON.parse(await readFile(path.join(directory,"manifest.json"),"utf8")) as EvalManifest;}
 
 export async function loadCases(directory:string):Promise<Case[]> {
+  return loadCasesRecursive(path.resolve(directory),new Set());
+}
+
+const evalRoot=path.resolve("eval/judge");
+function assertSuitePathConfined(directory:string){const relative=path.relative(evalRoot,directory);if(relative.startsWith("..")||path.isAbsolute(relative))throw new Error("Evaluation suite path escapes eval/judge");}
+async function loadCasesRecursive(directory:string,ancestors:Set<string>):Promise<Case[]> {
+  assertSuitePathConfined(directory);
+  if(ancestors.has(directory))throw new Error("Evaluation suite inheritance cycle detected");
+  const lineage=new Set(ancestors).add(directory);
   const manifest=await loadEvalManifest(directory);
-  const baseDirectory=manifest.base_suite?path.resolve(directory,manifest.base_suite):directory;
-  const baseManifest=manifest.base_suite?await loadEvalManifest(baseDirectory):manifest;
-  let cases=await loadBaseCases(baseDirectory,baseManifest);
+  let cases=manifest.base_suite?await loadCasesRecursive(path.resolve(directory,manifest.base_suite),lineage):await loadBaseCases(directory,manifest);
   if(manifest.label_overrides_file)cases=await applyLabelOverrides(cases,path.join(directory,manifest.label_overrides_file));
   if(manifest.expected_case_count!==undefined&&cases.length!==manifest.expected_case_count)throw new Error("Evaluation case count does not match manifest");
   return cases;
@@ -123,6 +129,7 @@ export async function runJudgeEval(options:{suite?:string;promptVersion?:JudgePr
   const counts=emptyCounts();
   const perNode=Object.fromEntries(content.JUDGE_RUBRIC.nodes.map(n=>[n.id,{correct:0,total:0,counts:emptyCounts()}])) as Record<string,{correct:number;total:number;counts:Record<Status,Counts>}>;
   const answerConfusion:Record<string,Record<string,number>>={};const ambiguityConfusion:Record<string,Record<string,number>>={};
+  const schemaFailureCategories=Object.fromEntries(JUDGE_FAILURE_CATEGORIES.map(category=>[category,0])) as Record<JudgeFailureCategory,number>;
   const failures:Array<Record<string,unknown>>=[];const discoveredFalsePositiveCaseIds:string[]=[];const prematureLockCaseIds:string[]=[];const prematureUnlockCaseIds:string[]=[];
   let answerCorrect=0,ambiguityCorrect=0,schemaValid=0,retried=0,retryAttempts=0,providerFailures=0,schemaFailures=0,evidenceExpected=0,evidenceMissing=0,evidenceInvalid=0,evidenceSemanticMismatch=0;
   let inputTokens=0,outputTokens=0,totalTokens=0;const latencies:number[]=[];
@@ -130,9 +137,9 @@ export async function runJudgeEval(options:{suite?:string;promptVersion?:JudgePr
   for(const testCase of cases){
     let execution;
     try { execution=await judge.evaluate({rubric:content.JUDGE_RUBRIC,currentAnswer:testCase.current_answer,priorConfirmedState:testCase.prior_confirmed_state??[],...(testCase.last_guidance?{lastGuidance:testCase.last_guidance}:{})}); }
-    catch(error){const attempts=error instanceof JudgeExecutionError?error.attempts:[];if(attempts.length>1){retried+=1;retryAttempts+=attempts.length-1;}for(const a of attempts){latencies.push(a.latencyMs);inputTokens+=a.inputTokens??0;outputTokens+=a.outputTokens??0;totalTokens+=a.totalTokens??0;if(a.resultStatus==="PROVIDER_ERROR")providerFailures+=1;if(a.resultStatus==="SCHEMA_ERROR")schemaFailures+=1;}failures.push({id:testCase.id,kind:"execution",attempts:attempts.map(a=>a.resultStatus)});continue;}
-    if(execution.attempts.length>1){retried+=1;retryAttempts+=execution.attempts.length-1;}for(const a of execution.attempts){latencies.push(a.latencyMs);inputTokens+=a.inputTokens??0;outputTokens+=a.outputTokens??0;totalTokens+=a.totalTokens??0;if(a.resultStatus==="PROVIDER_ERROR")providerFailures+=1;if(a.resultStatus==="SCHEMA_ERROR")schemaFailures+=1;}
-    let verdict;try{verdict=validateJudgeVerdict(execution.verdict,content.JUDGE_RUBRIC,testCase.current_answer);schemaValid+=1;}catch{evidenceInvalid+=1;failures.push({id:testCase.id,kind:"invalid-evidence"});continue;}
+    catch(error){const attempts=error instanceof JudgeExecutionError?error.attempts:[];if(attempts.length>1){retried+=1;retryAttempts+=attempts.length-1;}for(const a of attempts){latencies.push(a.latencyMs);inputTokens+=a.inputTokens??0;outputTokens+=a.outputTokens??0;totalTokens+=a.totalTokens??0;if(a.resultStatus==="PROVIDER_ERROR")providerFailures+=1;if(a.resultStatus==="SCHEMA_ERROR")schemaFailures+=1;if(a.failureCategory)schemaFailureCategories[a.failureCategory]+=1;}failures.push({id:testCase.id,kind:"execution",attempts:attempts.map(a=>({resultStatus:a.resultStatus,...(a.failureCategory?{failureCategory:a.failureCategory}:{})}))});continue;}
+    if(execution.attempts.length>1){retried+=1;retryAttempts+=execution.attempts.length-1;}for(const a of execution.attempts){latencies.push(a.latencyMs);inputTokens+=a.inputTokens??0;outputTokens+=a.outputTokens??0;totalTokens+=a.totalTokens??0;if(a.resultStatus==="PROVIDER_ERROR")providerFailures+=1;if(a.resultStatus==="SCHEMA_ERROR")schemaFailures+=1;if(a.failureCategory)schemaFailureCategories[a.failureCategory]+=1;}
+    let verdict;try{verdict=validateJudgeVerdict(execution.verdict,content.JUDGE_RUBRIC,testCase.current_answer);schemaValid+=1;}catch(error){evidenceInvalid+=1;schemaFailures+=1;const failureCategory=error instanceof JudgeVerdictValidationError?error.category:"STRUCTURED_OUTPUT_INVALID";schemaFailureCategories[failureCategory]+=1;failures.push({id:testCase.id,kind:"validation",failureCategory});continue;}
     answerConfusion[testCase.expected_answer_type]??={};answerConfusion[testCase.expected_answer_type]![verdict.answerType]=(answerConfusion[testCase.expected_answer_type]![verdict.answerType]??0)+1;
     ambiguityConfusion[testCase.expected_ambiguity]??={};ambiguityConfusion[testCase.expected_ambiguity]![verdict.ambiguity]=(ambiguityConfusion[testCase.expected_ambiguity]![verdict.ambiguity]??0)+1;
     if(verdict.answerType===testCase.expected_answer_type)answerCorrect+=1;else failures.push({id:testCase.id,kind:"answer-type",expected:testCase.expected_answer_type,actual:verdict.answerType});
@@ -152,7 +159,7 @@ export async function runJudgeEval(options:{suite?:string;promptVersion?:JudgePr
   const statusMetrics=metricsForCounts(counts,statuses);
   const f1Values=Object.values(statusMetrics).map(m=>m.f1).filter((v):v is number=>v!==null);
   const report={timestamp:new Date().toISOString(),git_sha:gitSha(),dataset_version:manifest.dataset_version,content_slug:manifest.content_slug,content_version:manifest.content_version,content_hash:contentVersionHash(content),model,prompt_version:promptVersion,case_count:cases.length,
-    metrics:{node:{per_status:statusMetrics,macro_f1:round(f1Values.reduce((a,b)=>a+b,0)/f1Values.length),per_node:Object.fromEntries(Object.entries(perNode).map(([id,c])=>{const perStatus=metricsForCounts(c.counts,statuses);const values=Object.values(perStatus).map(m=>m.f1).filter((v):v is number=>v!==null);return[id,{accuracy:round(ratio(c.correct,c.total)),correct:c.correct,total:c.total,macro_f1:round(values.reduce((a,b)=>a+b,0)/values.length),per_status:perStatus}];}))},critical_lock:{core_discovered_precision:round(ratio(coreDiscoveredTp,coreDiscoveredTp+coreDiscoveredFp)),core_discovered_recall:round(ratio(coreDiscoveredTp,coreDiscoveredTp+coreDiscoveredFn)),precision_numerator:coreDiscoveredTp,precision_denominator:coreDiscoveredTp+coreDiscoveredFp,recall_numerator:coreDiscoveredTp,recall_denominator:coreDiscoveredTp+coreDiscoveredFn,false_positive_count:coreDiscoveredFp,false_negative_count:coreDiscoveredFn,discovered_false_positive_case_ids:[...new Set(discoveredFalsePositiveCaseIds)],designated_subset_rule:`expected merged prior+current semantic state is not lock-eligible: required DISCOVERED >= ${content.SERVER_POLICY.lock_threshold} and no blocking CONTRADICTED`,premature_lock_proxy_count:new Set(prematureLockCaseIds).size,premature_lock_proxy_case_ids:[...new Set(prematureLockCaseIds)],premature_unlock_proxy_count:new Set(prematureUnlockCaseIds).size,premature_unlock_proxy_case_ids:[...new Set(prematureUnlockCaseIds)]},answer_type:{accuracy:round(ratio(answerCorrect,cases.length)),confusion:answerConfusion},ambiguity:{accuracy:round(ratio(ambiguityCorrect,cases.length)),confusion:ambiguityConfusion},evidence:{expected_count:evidenceExpected,missing_count:evidenceMissing,missing_rate:round(ratio(evidenceMissing,evidenceExpected)),invalid_literal_count:evidenceInvalid,invalid_literal_rate:round(ratio(evidenceInvalid,evidenceExpected)),accepted_invalid_literal_count:0,semantic_mismatch_count:evidenceSemanticMismatch,semantic_mismatch_rate:round(ratio(evidenceSemanticMismatch,evidenceExpected))},operational:{schema_valid_rate:round(ratio(schemaValid,cases.length)),retry_count:retryAttempts,retried_case_count:retried,retry_rate:round(ratio(retried,cases.length)),provider_failure_count:providerFailures,schema_failure_count:schemaFailures,latency_ms:{p50:percentile(latencies,.5),p95:percentile(latencies,.95),max:latencies.length?Math.max(...latencies):null},tokens:{input:inputTokens,output:outputTokens,total:totalTokens},estimated_cost_usd:model===manifest.candidate_model?Number(((inputTokens*manifest.pricing_usd_per_million.input+outputTokens*manifest.pricing_usd_per_million.output)/1_000_000).toFixed(8)):null,pricing_basis:model===manifest.candidate_model?manifest.pricing_usd_per_million:null}},
+    metrics:{node:{per_status:statusMetrics,macro_f1:round(f1Values.reduce((a,b)=>a+b,0)/f1Values.length),per_node:Object.fromEntries(Object.entries(perNode).map(([id,c])=>{const perStatus=metricsForCounts(c.counts,statuses);const values=Object.values(perStatus).map(m=>m.f1).filter((v):v is number=>v!==null);return[id,{accuracy:round(ratio(c.correct,c.total)),correct:c.correct,total:c.total,macro_f1:round(values.reduce((a,b)=>a+b,0)/values.length),per_status:perStatus}];}))},critical_lock:{core_discovered_precision:round(ratio(coreDiscoveredTp,coreDiscoveredTp+coreDiscoveredFp)),core_discovered_recall:round(ratio(coreDiscoveredTp,coreDiscoveredTp+coreDiscoveredFn)),precision_numerator:coreDiscoveredTp,precision_denominator:coreDiscoveredTp+coreDiscoveredFp,recall_numerator:coreDiscoveredTp,recall_denominator:coreDiscoveredTp+coreDiscoveredFn,false_positive_count:coreDiscoveredFp,false_negative_count:coreDiscoveredFn,discovered_false_positive_case_ids:[...new Set(discoveredFalsePositiveCaseIds)],designated_subset_rule:`expected merged prior+current semantic state is not lock-eligible: required DISCOVERED >= ${content.SERVER_POLICY.lock_threshold} and no blocking CONTRADICTED`,premature_lock_proxy_count:new Set(prematureLockCaseIds).size,premature_lock_proxy_case_ids:[...new Set(prematureLockCaseIds)],premature_unlock_proxy_count:new Set(prematureUnlockCaseIds).size,premature_unlock_proxy_case_ids:[...new Set(prematureUnlockCaseIds)]},answer_type:{accuracy:round(ratio(answerCorrect,cases.length)),confusion:answerConfusion},ambiguity:{accuracy:round(ratio(ambiguityCorrect,cases.length)),confusion:ambiguityConfusion},evidence:{expected_count:evidenceExpected,missing_count:evidenceMissing,missing_rate:round(ratio(evidenceMissing,evidenceExpected)),invalid_literal_count:evidenceInvalid,invalid_literal_rate:round(ratio(evidenceInvalid,evidenceExpected)),accepted_invalid_literal_count:0,semantic_mismatch_count:evidenceSemanticMismatch,semantic_mismatch_rate:round(ratio(evidenceSemanticMismatch,evidenceExpected))},operational:{schema_valid_rate:round(ratio(schemaValid,cases.length)),retry_count:retryAttempts,retried_case_count:retried,retry_rate:round(ratio(retried,cases.length)),provider_failure_count:providerFailures,schema_failure_count:schemaFailures,schema_failure_categories:schemaFailureCategories,latency_ms:{p50:percentile(latencies,.5),p95:percentile(latencies,.95),max:latencies.length?Math.max(...latencies):null},tokens:{input:inputTokens,output:outputTokens,total:totalTokens},estimated_cost_usd:model===manifest.candidate_model?Number(((inputTokens*manifest.pricing_usd_per_million.input+outputTokens*manifest.pricing_usd_per_million.output)/1_000_000).toFixed(8)):null,pricing_basis:model===manifest.candidate_model?manifest.pricing_usd_per_million:null}},
     critical_failures:{false_positive_case_ids:[...new Set(prematureLockCaseIds)],false_negative_case_ids:[...new Set(prematureUnlockCaseIds)]},failures};
   assertEvalReportRedacted(report,cases.map(testCase=>testCase.current_answer));
   const out=path.resolve("artifacts/eval/judge");await mkdir(out,{recursive:true});const file=path.join(out,`${manifest.dataset_version}-${Date.now()}.json`);await writeFile(file,JSON.stringify(report,null,2)+"\n","utf8");
