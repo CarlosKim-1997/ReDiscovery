@@ -32,9 +32,6 @@ export const approvedContentSchema = z.object({
     explanation: z.string().min(1), connection: z.string().min(1),
     provenance: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   }).strict(),
-  schedule: z.array(z.object({
-    canonical_date: z.iso.date(), sequence_number: z.number().int().positive(), release_at: z.iso.datetime(),
-  }).strict()).min(1),
 }).strict().superRefine((content, context) => {
   const ids = content.JUDGE_RUBRIC.nodes.map(({ id }) => id);
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC", "nodes"], message: "Duplicate node IDs" });
@@ -44,11 +41,29 @@ export const approvedContentSchema = z.object({
   if (content.SERVER_POLICY.lock_threshold > content.SERVER_POLICY.required_nodes.length) {
     context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_threshold"], message: "Threshold exceeds required node count" });
   }
-  const forbidden = /conway|melvin|1968|콘웨이/i;
-  if (forbidden.test(JSON.stringify(content.JUDGE_RUBRIC))) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC"], message: "Judge rubric leaks Reveal identity" });
+  const forbidden = [content.REVEAL_CONTENT.theory, content.REVEAL_CONTENT.person, content.REVEAL_CONTENT.year, ...(content.SERVER_POLICY.recognition_aliases ?? [])];
+  for (const [layer, value] of [["PUBLIC_PLAY", content.PUBLIC_PLAY], ["JUDGE_RUBRIC", content.JUDGE_RUBRIC]] as const) {
+    const serialized = JSON.stringify(value).toLocaleLowerCase("en-US");
+    for (const identity of forbidden) if (serialized.includes(identity.toLocaleLowerCase("en-US"))) {
+      context.addIssue({ code: "custom", path: [layer], message: `${layer} leaks Reveal identity or recognition value` });
+    }
+  }
+});
+
+const scheduleEntrySchema = z.object({
+  canonical_date: z.iso.date(), sequence_number: z.number().int().positive(), release_at: z.iso.datetime(),
+  content: z.object({ slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/), version: z.number().int().positive() }).strict(),
+}).strict();
+
+export const dailyScheduleSchema = z.object({ schema_version: z.literal(1), entries: z.array(scheduleEntrySchema).min(1) }).strict().superRefine(({ entries }, context) => {
+  const dates = entries.map((entry) => entry.canonical_date);
+  const sequences = entries.map((entry) => entry.sequence_number);
+  if (new Set(dates).size !== dates.length) context.addIssue({ code: "custom", path: ["entries"], message: "Duplicate canonical_date" });
+  if (new Set(sequences).size !== sequences.length) context.addIssue({ code: "custom", path: ["entries"], message: "Duplicate sequence_number" });
 });
 
 export type ApprovedContent = Readonly<z.infer<typeof approvedContentSchema>>;
+export type DailySchedule = Readonly<z.infer<typeof dailyScheduleSchema>>;
 export type PublicPlay = ApprovedContent["PUBLIC_PLAY"];
 export type JudgeRubric = ApprovedContent["JUDGE_RUBRIC"];
 export type ServerPolicy = ApprovedContent["SERVER_POLICY"];

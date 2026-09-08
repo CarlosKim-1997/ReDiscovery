@@ -44,7 +44,8 @@ DTO, persistence, and HTTP tests in the corresponding milestones.
 `ClockPort.now()` returns a `Date`. Only the system adapter reads the current
 wall clock. Unit tests inject fixed instants. Domain/application/ports/shared
 cannot refer to ambient `Date`, `process`, or `fetch` under lint rules.
-Canonical Daily resolution in Asia/Seoul is deferred to M2.
+Canonical Daily resolution matches both the `ClockPort` instant's Asia/Seoul date
+and a released schedule row. An unscheduled date has no current Daily.
 
 `config/schema.ts` parses only owned environment keys, freezes output, and reports
 invalid key names without raw values. `next.config.ts` validates at configuration
@@ -82,6 +83,10 @@ Approved content is validated into PUBLIC_PLAY, JUDGE_RUBRIC, SERVER_POLICY, and
 REVEAL_CONTENT. Only PUBLIC_PLAY crosses the pre-Lock boundary. Generic domain
 policy consumes dynamic node IDs and SERVER_POLICY; FakeJudge consumes JUDGE_RUBRIC.
 
+Content definitions and editorial schedules are separate repository inputs. Content
+hashes exclude scheduling, and composite PostgreSQL constraints bind session evidence,
+completion Daily, and immutable session Daily/content identity.
+
 Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when their actual
-use cases start. M1 has no identity, external AI call, experiment, PWA service
-worker, production data, or deployment.
+use cases start. M2 has no external AI call, experiment, PWA service worker, account
+auth, or deployment.

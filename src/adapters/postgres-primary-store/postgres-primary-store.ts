@@ -11,7 +11,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
   constructor(databaseUrl: string) { this.sql = postgres(databaseUrl, { max: 10 }); }
   async close() { await this.sql.end(); }
   async resolveDaily(at: Date): Promise<DailyRecord | undefined> {
-    const [row] = await this.sql<Row[]>`SELECT d.*,v.public_play FROM daily_schedule d JOIN content_versions v ON v.id=d.content_version_id WHERE d.release_at<=${at} ORDER BY d.release_at DESC LIMIT 1`;
+    const [row] = await this.sql<Row[]>`SELECT d.*,v.public_play FROM daily_schedule d JOIN content_versions v ON v.id=d.content_version_id WHERE d.canonical_date=(${at} AT TIME ZONE 'Asia/Seoul')::date AND d.release_at<=${at} LIMIT 1`;
     return row ? { id:String(row.id),canonicalDate:dateText(row.canonical_date),sequenceNumber:Number(row.sequence_number),releaseAt:new Date(String(row.release_at)),contentVersionId:String(row.content_version_id),publicPlay:row.public_play as PublicPlay } : undefined;
   }
   async getDaily(id:string):Promise<DailyRecord|undefined>{const [r]=await this.sql<Row[]>`SELECT d.*,v.public_play FROM daily_schedule d JOIN content_versions v ON v.id=d.content_version_id WHERE d.id=${id}`;return r?{id:String(r.id),canonicalDate:dateText(r.canonical_date),sequenceNumber:Number(r.sequence_number),releaseAt:new Date(String(r.release_at)),contentVersionId:String(r.content_version_id),publicPlay:r.public_play as PublicPlay}:undefined;}
@@ -32,7 +32,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
   }
   async getOwnedSession(id:string,deviceId:string){return this.load(this.sql,id,deviceId);}
   async saveAnswerTransition(expected:number,answer:PlaySession["thoughts"][number],session:PlaySession){
-    return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,session,expected))return false;await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${answer.id},${session.id},${answer.turn},${answer.stage},${answer.text},${answer.text.length})`;await this.persist(tx,expected,session);return true;});
+    return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,session,expected))return false;await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${answer.id},${session.id},${answer.turn},${answer.stage},${answer.text},char_length(${answer.text}))`;await this.persist(tx,expected,session);return true;});
   }
   async saveTransition(expected:number,session:PlaySession){return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,session,expected))return false;await this.persist(tx,expected,session);return true;});}
   async completeReveal(expected:number,session:PlaySession){return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,session,expected))return false;await this.persist(tx,expected,session);await tx`INSERT INTO daily_completions(session_id,daily_id) VALUES(${session.id},${session.dailyId}) ON CONFLICT(session_id) DO NOTHING`;return true;});}

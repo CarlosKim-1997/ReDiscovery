@@ -40,6 +40,7 @@ jobs:
       - run: pnpm content:validate
       - run: pnpm db:migrate
       - run: pnpm content:seed
+      - run: pnpm content:seed
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

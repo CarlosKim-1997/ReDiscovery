@@ -40,9 +40,5 @@
     "explanation": "조직이 만드는 시스템의 구조는 그 조직의 의사소통 구조를 닮는 경향이 있습니다.",
     "connection": "이는 소통의 경계가 설계 결정의 경계가 되고, 결국 시스템 구조가 조직 구조를 닮는다는 통찰과 맞닿아 있습니다.",
     "provenance": { "kind": "approved-reference-fixture", "verified": true }
-  },
-  "schedule": [
-    { "canonical_date": "2026-09-08", "sequence_number": 1, "release_at": "2026-09-07T15:00:00.000Z" },
-    { "canonical_date": "2026-09-09", "sequence_number": 2, "release_at": "2026-09-08T15:00:00.000Z" }
-  ]
+  }
 }
