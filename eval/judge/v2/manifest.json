@@ -1,0 +1,17 @@
+{
+  "dataset_version": "judge-dev-v2",
+  "content_slug": "conway-law",
+  "content_version": 2,
+  "prompt_version": "judge-v2",
+  "candidate_model": "gpt-5.6-luna",
+  "pricing_usd_per_million": {
+    "input": 0.2,
+    "output": 1.2,
+    "checked_at": "2026-09-08"
+  },
+  "base_suite": "../v1",
+  "label_overrides_file": "label-overrides.json",
+  "expected_case_count": 124,
+  "authorship": "V2 semantic-contract audit over the frozen human-authored v1 surface corpus.",
+  "notes": "Development calibration set only. Not a final holdout and not a production quality claim."
+}

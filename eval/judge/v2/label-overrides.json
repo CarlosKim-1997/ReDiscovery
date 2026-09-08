@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "overrides": [
+    {
+      "case_ids": ["seed-002"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "A communication-defined actor grouping is explicitly identified and used as the decision boundary."
+    },
+    {
+      "case_ids": ["seed-003"],
+      "ambiguity": {"from": "TOO_SHORT", "to": "NONE"},
+      "node_statuses": {"COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "ABSENT"}},
+      "reason": "The short sentence clearly states team separation, but says nothing about communication; conceptual incompleteness is not linguistic ambiguity."
+    },
+    {
+      "case_ids": ["seed-011", "messy-unclear-reference-01"],
+      "node_statuses": {"SYSTEM_RESEMBLANCE": {"from": "PARTIAL", "to": "ABSENT"}},
+      "reason": "Unresolved pronouns provide no identifiable pair of structures or usable structural proposition."
+    },
+    {
+      "case_ids": ["seed-015", "messy-theory-name-only-01", "messy-theory-name-only-02", "messy-theory-name-only-03", "messy-theory-name-only-04"],
+      "answer_type": {"from": "REASONING", "to": "META"},
+      "ambiguity": {"from": "SEMANTIC_BOUNDARY", "to": "NONE"},
+      "reason": "Naming the theory is clearly a meta/answer-label act and supplies no causal reasoning or ambiguous proposition."
+    },
+    {
+      "case_ids": ["seed-016", "messy-keyword-stuffing-01", "messy-keyword-stuffing-02", "messy-keyword-stuffing-03", "messy-keyword-stuffing-04"],
+      "ambiguity": {"from": "SEMANTIC_BOUNDARY", "to": "NONE"},
+      "reason": "Keyword listing is clearly META and proposition-free rather than semantically borderline."
+    },
+    {
+      "case_ids": ["seed-019"],
+      "node_statuses": {"SYSTEM_RESEMBLANCE": {"from": "PARTIAL", "to": "ABSENT"}},
+      "reason": "The only system claim is a rejected quotation; the endorsed answer establishes communication and decision clustering but no system correspondence."
+    },
+    {
+      "case_ids": ["messy-spacing-full-04"],
+      "node_statuses": {"SYSTEM_RESEMBLANCE": {"from": "DISCOVERED", "to": "ABSENT"}},
+      "reason": "The answer ends at team-partitioned design and never mentions a product, system, output, or structural correspondence."
+    },
+    {
+      "case_ids": ["messy-double-negation-02"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "ABSENT"}
+      },
+      "reason": "A team boundary is explicit; communication is not present. Double negation affects ambiguity, not those proposition facts."
+    },
+    {
+      "case_ids": ["messy-double-negation-03"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "ABSENT"},
+        "DECISION_CLUSTERING": {"from": "ABSENT", "to": "PARTIAL"}
+      },
+      "evidence_terms": {"DECISION_CLUSTERING": ["설계"]},
+      "reason": "No organizational grouping is expressed; design is relevant but no local decision clustering relationship is completed."
+    },
+    {
+      "case_ids": ["messy-double-negation-04"],
+      "node_statuses": {"COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "ABSENT"}},
+      "reason": "The answer mentions organization and output but contains no communication proposition."
+    },
+    {
+      "case_ids": ["messy-hedging-01"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "DECISION_CLUSTERING": {"from": "PARTIAL", "to": "DISCOVERED"}
+      },
+      "reason": "Hedging does not downgrade the explicitly stated team-boundary, communication-difference, and decision-partition chain; system relatedness remains structurally incomplete."
+    },
+    {
+      "case_ids": ["messy-hedging-02", "messy-hedging-03", "messy-hedging-04"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "DECISION_CLUSTERING": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "SYSTEM_RESEMBLANCE": {"from": "PARTIAL", "to": "DISCOVERED"}
+      },
+      "reason": "Each answer states the complete structural chain; uncertainty belongs solely in SEMANTIC_BOUNDARY."
+    },
+    {
+      "case_ids": ["messy-rejected-quote-01", "messy-rejected-quote-03"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "DECISION_CLUSTERING": {"from": "PARTIAL", "to": "DISCOVERED"}
+      },
+      "reason": "After rejecting the quoted misconception, the endorsed clause explicitly states group boundaries and decisions clustering within them."
+    },
+    {
+      "case_ids": ["messy-rejected-quote-02"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "DECISION_CLUSTERING": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "SYSTEM_RESEMBLANCE": {"from": "DISCOVERED", "to": "PARTIAL"}
+      },
+      "reason": "Cross-team grouping and local design judgment are explicit, while saying organization governs product structure expresses influence without structural correspondence."
+    },
+    {
+      "case_ids": ["messy-rejected-quote-04"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "SYSTEM_RESEMBLANCE": {"from": "DISCOVERED", "to": "PARTIAL"}
+      },
+      "reason": "Team separation is explicit, but the endorsed result claim says only that organization is related to output structure, not that the structures correspond."
+    },
+    {
+      "case_ids": ["messy-correct-then-contradict-02"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "DISCOVERED", "to": "PARTIAL"}},
+      "reason": "A communication boundary is stated but no organizational or team grouping is established."
+    },
+    {
+      "case_ids": ["messy-correct-then-contradict-03"],
+      "node_statuses": {"COMMUNICATION_FRICTION": {"from": "DISCOVERED", "to": "ABSENT"}},
+      "reason": "The answer discusses teams, decisions, modules, and a final contradiction but contains no communication proposition."
+    },
+    {
+      "case_ids": ["messy-correct-then-contradict-04"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "DISCOVERED", "to": "ABSENT"},
+        "COMMUNICATION_FRICTION": {"from": "DISCOVERED", "to": "PARTIAL"},
+        "DECISION_CLUSTERING": {"from": "DISCOVERED", "to": "ABSENT"}
+      },
+      "reason": "Communication cost is mentioned without a cross-boundary contrast; no team grouping or decision-clustering proposition appears. The final no-relationship claim remains CONTRADICTED."
+    },
+    {
+      "case_ids": ["messy-communication-only-01", "messy-communication-only-04"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "The answer explicitly divides actors into communication-defined groups and compares communication across those groups."
+    },
+    {
+      "case_ids": ["messy-decision-only-01", "messy-decision-only-02", "messy-decision-only-03", "messy-decision-only-04"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "Each answer explicitly forms an actor group or boundary from communication/coordination scope and locates decisions inside it."
+    },
+    {
+      "case_ids": ["messy-decision-only-04"],
+      "node_statuses": {"COMMUNICATION_FRICTION": {"from": "DISCOVERED", "to": "PARTIAL"}},
+      "reason": "Collaboration is mentioned, but no difference in communication access, frequency, cost, or ease is stated."
+    },
+    {
+      "case_ids": ["messy-resemblance-only-02", "messy-resemblance-only-03"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "Team boundaries or the company's division are explicit sides of the structural comparison."
+    },
+    {
+      "case_ids": ["messy-wrong-causal-vocabulary-02"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "An organizational boundary is explicitly present even though the system-to-organization causal direction is contradicted."
+    },
+    {
+      "case_ids": ["messy-wrong-causal-vocabulary-03"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "ABSENT"},
+        "DECISION_CLUSTERING": {"from": "ABSENT", "to": "PARTIAL"}
+      },
+      "evidence_terms": {"DECISION_CLUSTERING": ["설계 구조"]},
+      "reason": "Team division is explicit and design is relevant but reversed; communication is absent. The reversed system causality remains CONTRADICTED."
+    },
+    {
+      "case_ids": ["messy-prior-state-01", "messy-prior-state-03"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "ABSENT"}
+      },
+      "reason": "The current answer itself states grouping and decision/system structure, but communication appears only in prior state or guidance and cannot be carried into the current classification."
+    },
+    {
+      "case_ids": ["messy-prior-state-02"],
+      "node_statuses": {"TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"}},
+      "reason": "The current answer explicitly partitions judgments and modules by team; prior state is unnecessary for that node."
+    },
+    {
+      "case_ids": ["messy-prior-state-04"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "PARTIAL", "to": "DISCOVERED"},
+        "COMMUNICATION_FRICTION": {"from": "PARTIAL", "to": "DISCOVERED"}
+      },
+      "reason": "The current answer explicitly defines communication-capable groups and locates design and product structure within them."
+    },
+    {
+      "case_ids": ["messy-mixed-minor-error-02"],
+      "node_statuses": {
+        "COMMUNICATION_FRICTION": {"from": "DISCOVERED", "to": "ABSENT"},
+        "DECISION_CLUSTERING": {"from": "DISCOVERED", "to": "PARTIAL"}
+      },
+      "reason": "Communication is absent; decision is linked to a boundary but local clustering is not explicitly established."
+    },
+    {
+      "case_ids": ["messy-mixed-minor-error-04"],
+      "node_statuses": {
+        "TEAM_BOUNDARIES": {"from": "DISCOVERED", "to": "ABSENT"},
+        "COMMUNICATION_FRICTION": {"from": "DISCOVERED", "to": "PARTIAL"},
+        "DECISION_CLUSTERING": {"from": "DISCOVERED", "to": "ABSENT"}
+      },
+      "reason": "The answer clearly states system/communication-structure resemblance, but provides no organizational grouping, communication contrast, or decision proposition."
+    }
+  ]
+}

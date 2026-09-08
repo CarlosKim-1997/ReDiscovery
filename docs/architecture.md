@@ -102,3 +102,16 @@ policy result. A failed evaluation atomically removes the unclassified answer an
 restores the prior gameplay state while incrementing `state_version`. `ai_runs`
 retains only non-raw operational metadata; its answer foreign key becomes null if
 the reservation is rolled back.
+
+M3-B1 adds immutable prompt selection inside the same adapter. Its constructor
+defaults to the accepted `judge-v1`, which is therefore still used by the runtime
+composition root. Evaluation may explicitly select `judge-v2`; the chosen prompt
+version is carried into each transport request and attempt record. The evaluator
+loads dataset, content, and expected prompt identities from a versioned manifest
+and rejects mismatches before any provider call.
+
+`eval/judge/v2` is a development-suite delta over the frozen 124 v1 texts. Its
+manifest names `judge-dev-v2`, content version 2, and `judge-v2`; its override
+ledger verifies every old label before applying an audited semantic change.
+`conway-law.v2.json` copies PUBLIC_PLAY, SERVER_POLICY, and REVEAL_CONTENT unchanged
+and sharpens only JUDGE_RUBRIC. Daily schedule entries remain on content version 1.

@@ -1,4 +1,4 @@
-# G1 — M3 Real Judge and Gold Evaluation
+# G1 — M3 Judge Evaluation and Semantic Calibration
 
 G1 Master Codex Handoff Packet v1이 canonical implementation specification이다.
 현재 구현 범위는 **M3까지**이며 M4 이상 기능은 포함하지 않는다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
@@ -56,6 +56,20 @@ pnpm test:e2e
 OPENAI_API_KEY=... PRIMARY_JUDGE_MODEL=... pnpm eval:judge
 ```
 
+The default remains the frozen `v1` suite and accepted `judge-v1` prompt. A later
+local PowerShell run of the v2 development calibration uses exactly:
+
+```powershell
+$env:JUDGE_EVAL_SUITE = "v2"
+$env:PRIMARY_JUDGE_MODEL = "gpt-5.6-luna"
+$env:OPENAI_API_KEY = "<local secret>"
+pnpm eval:judge
+```
+
+The v2 manifest selects `judge-dev-v2`, `conway-law` content version 2, and
+`judge-v2`; the evaluator rejects a prompt mismatch. Do not put the key in a file
+or CI. This repository task does not execute that live command.
+
 평가 보고서는 `artifacts/eval/judge/`에 생성되며 원문 답변·프롬프트·공급자 응답은 포함하지 않는다.
 
 E2E는 이미 빌드된 앱을 `127.0.0.1:3100`에서 자동 실행한다.
@@ -94,3 +108,6 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [M0 verification](docs/milestones/M0.md): 변경 파일, 검증 결과, 남은 문제
 - [M1 walking skeleton](docs/milestones/M1.md): 상태 흐름, FakeJudge, resume, Reveal, 검증
 - [M3 Judge and evaluation](docs/milestones/M3.md): OpenAI adapter, Gold dataset, 평가/검증 상태
+- [Judge v1 Luna baseline](docs/evals/judge-v1-luna-baseline.md): frozen first live-provider result
+- [Judge v2 semantic contract](docs/evals/judge-v2-semantic-contract.md): independent status/ambiguity rules
+- [Judge v2 label audit](docs/evals/judge-v2-label-audit.md): every audited v1→v2 label change
