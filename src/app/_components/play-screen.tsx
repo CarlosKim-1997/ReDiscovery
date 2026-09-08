@@ -33,7 +33,10 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
       body: JSON.stringify({ thought }),
     });
     if (!response.ok) {
-      setError("생각을 저장하지 못했습니다. 다시 시도해주세요.");
+      const failure = await response.json().catch(() => ({})) as { error?: string };
+      setError(failure.error === "JUDGE_UNAVAILABLE"
+        ? "지금은 생각을 살펴보지 못했습니다. 입력은 그대로 두었으니 다시 시도해주세요."
+        : "생각을 저장하지 못했습니다. 다시 시도해주세요.");
       setEvaluating(false);
       return;
     }

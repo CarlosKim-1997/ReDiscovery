@@ -150,3 +150,10 @@ test("Scenario G: mobile composer and Reveal fit without horizontal overflow", a
   await lockAndFinish(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test("recoverable Judge failure keeps the current thought for retry",async({page})=>{
+  await start(page);
+  await page.route(/\/api\/play-sessions\/[^/]+\/answers$/,route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"JUDGE_UNAVAILABLE"})}));
+  const textarea=page.getByLabel(/왜 조직이 일하는 방식/);await textarea.fill(partial);await page.getByRole("button",{name:"생각 제출하기"}).click();
+  await expect(page.locator(".error-copy")).toContainText("입력은 그대로");await expect(textarea).toHaveValue(partial);
+});

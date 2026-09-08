@@ -1,7 +1,7 @@
 # Repository instructions
 
 - Canonical authority: the user's **G1 Master Codex Handoff Packet v1**. Older designs and local summaries cannot override it. See `docs/spec-authority.md`.
-- Current completed scope is **M1 only**. Do not implement M2 or later until the M1 acceptance report has been delivered and the next milestone is explicitly being worked on.
+- M0, M1, and M2 are accepted. The active scope is **M3 only**; do not implement M4 or later functionality.
 - Read `docs/architecture.md` before changing dependencies across layers.
 - Domain/application code uses ports; vendor SDK imports belong exclusively in `src/adapters/`.
 - Inject `ClockPort` for time-dependent logic. Do not read ambient time in domain/application.

@@ -1,4 +1,4 @@
-# Architecture through M2
+# Architecture through M3
 
 ```text
 Next.js route (src/app)
@@ -88,5 +88,17 @@ hashes exclude scheduling, and composite PostgreSQL constraints bind session evi
 completion Daily, and immutable session Daily/content identity.
 
 Comparison/Auth/Redis/Turnstile/Telemetry ports will be defined when their actual
-use cases start. M2 has no external AI call, experiment, PWA service worker, account
-auth, or deployment.
+use cases start. M3 adds no experiment, PWA service worker, account auth, or deployment.
+
+M3 keeps `JudgePort` provider-neutral and adds `OpenAIJudgeAdapter` plus a mocked
+transport seam under `src/adapters/openai-judge`. The adapter is the only layer that
+imports the OpenAI SDK. It returns an untrusted structured verdict and redacted
+attempt metadata; application code checks exact node coverage and converts unique
+literal evidence text into canonical answer spans before deterministic policy runs.
+
+Answer submission is now a three-transaction sequence: reserve the raw answer and
+`EVALUATING`, call the provider with no transaction open, then persist the validated
+policy result. A failed evaluation atomically removes the unclassified answer and
+restores the prior gameplay state while incrementing `state_version`. `ai_runs`
+retains only non-raw operational metadata; its answer foreign key becomes null if
+the reservation is rolled back.

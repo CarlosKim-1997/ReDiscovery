@@ -1,7 +1,7 @@
 import postgres, { type Sql } from "postgres";
 import type { ContentVersion, JudgeRubric, PublicPlay, RevealContent, ServerPolicy } from "@/domain/content/schema";
 import type { PlaySession } from "@/domain/play/session";
-import type { DailyRecord, PrimaryStorePort } from "@/ports/primary-store";
+import type { AiRunRecord, DailyRecord, PrimaryStorePort } from "@/ports/primary-store";
 
 type Row = Record<string, unknown>;
 const dateText = (value: unknown) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
@@ -31,6 +31,23 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
     });
   }
   async getOwnedSession(id:string,deviceId:string){return this.load(this.sql,id,deviceId);}
+  async reserveAnswerEvaluation(expected:number,answer:PlaySession["thoughts"][number],evaluating:PlaySession){
+    return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,evaluating,expected))return false;await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${answer.id},${evaluating.id},${answer.turn},${answer.stage},${answer.text},char_length(${answer.text}))`;await this.persist(tx,expected,evaluating);return true;});
+  }
+  async completeAnswerEvaluation(expected:number,session:PlaySession){return this.saveTransition(expected,session);}
+  async abortAnswerEvaluation(expected:number,prior:PlaySession,answerId:string){
+    return this.sql.begin(async tx=>{
+      const [locked]=await tx<Row[]>`SELECT state_version FROM play_sessions WHERE id=${prior.id} AND anonymous_device_id=${prior.anonymousDeviceId} FOR UPDATE`;
+      if(Number(locked?.state_version)!==expected)return false;
+      await tx`DELETE FROM user_answers WHERE id=${answerId} AND session_id=${prior.id}`;
+      const [updated]=await tx<Row[]>`UPDATE play_sessions SET status=${prior.status},stage=${prior.stage},turn_count=${prior.turnCount},state_version=state_version+1,updated_at=now() WHERE id=${prior.id} AND anonymous_device_id=${prior.anonymousDeviceId} AND state_version=${expected} RETURNING id`;
+      return Boolean(updated);
+    });
+  }
+  async recordAiRuns(runs:readonly AiRunRecord[]){
+    if(runs.length===0)return;
+    await this.sql.begin(async tx=>{for(const run of runs)await tx`INSERT INTO ai_runs(id,session_id,answer_id,purpose,provider,model,prompt_version,content_version_id,dataset_version,attempt,schema_valid,result_status,input_tokens,output_tokens,total_tokens,estimated_cost,latency_ms,provider_request_id,created_at) VALUES(${run.id},${run.sessionId??null},${run.answerId??null},${run.purpose},${run.provider},${run.model},${run.promptVersion},${run.contentVersionId},${run.datasetVersion??null},${run.attempt},${run.schemaValid},${run.resultStatus},${run.inputTokens??null},${run.outputTokens??null},${run.totalTokens??null},${run.estimatedCost??null},${run.latencyMs},${run.providerRequestId??null},${run.createdAt})`;});
+  }
   async saveAnswerTransition(expected:number,answer:PlaySession["thoughts"][number],session:PlaySession){
     return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,session,expected))return false;await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${answer.id},${session.id},${answer.turn},${answer.stage},${answer.text},char_length(${answer.text}))`;await this.persist(tx,expected,session);return true;});
   }

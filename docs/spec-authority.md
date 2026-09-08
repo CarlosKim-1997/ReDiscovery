@@ -46,3 +46,11 @@ InMemoryPrimaryStore, M1-only local snapshot replay, browser routes, Lock/Reveal
 and Result. It does not weaken or replace any Master Packet rule. Production Daily,
 content persistence, identity, external AI, abuse/cost, and analytics remain later
 milestones.
+
+## Current milestone scope
+
+M0–M2 are accepted and closed. M3 adds only the production-shaped semantic Judge
+adapter, server evidence validation, recoverable EVALUATING persistence, redacted
+`ai_runs`, and versioned Gold evaluation tooling/data. M4 and later behavior remains
+out of scope. M3 cannot be accepted until its real-provider evaluation and hosted CI
+gates are actually run and reported.

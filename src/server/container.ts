@@ -8,12 +8,18 @@ import { FakeJudgeAdapter } from "@/adapters/fake-judge/fake-judge";
 import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres-primary-store";
 import { NodeIdentityAdapter } from "@/adapters/node-identity/node-identity";
 import type { IdentityPort } from "@/ports/identity";
+import { OpenAIJudgeAdapter, OpenAIResponsesJudgeTransport } from "@/adapters/openai-judge/openai-judge";
+
+function makeJudge():JudgePort {
+  if(serverConfig.JUDGE_ADAPTER==="fake")return new FakeJudgeAdapter();
+  return new OpenAIJudgeAdapter(new OpenAIResponsesJudgeTransport(serverConfig.OPENAI_API_KEY!),serverConfig.PRIMARY_JUDGE_MODEL!);
+}
 
 /** The composition root is the only place that chooses concrete adapters. */
 export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; store: PrimaryStorePort }> = Object.freeze({
   clock: new SystemClock(),
   identity: new NodeIdentityAdapter(),
-  judge: new FakeJudgeAdapter(),
+  judge: makeJudge(),
   store: new PostgresPrimaryStore(serverConfig.DATABASE_URL),
 });
 

@@ -1,0 +1,12 @@
+{
+  "dataset_version": "judge-gold-v1",
+  "content_slug": "conway-law",
+  "content_version": 1,
+  "prompt_version": "judge-v1",
+  "candidate_model": "gpt-5.6-luna",
+  "pricing_usd_per_million": { "input": 0.2, "output": 1.2, "checked_at": "2026-09-08" },
+  "seed_file": "conway.seed.jsonl",
+  "messy_file": "conway.messy.json",
+  "authorship": "Human-authored labels; synthetic surface variants are grouped under manually reviewed expectations.",
+  "notes": "Engineering evaluation set only. It does not establish a production false-reveal probability."
+}

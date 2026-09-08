@@ -5,6 +5,14 @@ const serverConfigSchema = z.object({
   APP_ENV: z.enum(["local", "test", "staging", "production"]).default("local"),
   CONFIG_VERSION: z.string().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/).default("m0-v1"),
   DATABASE_URL: z.string().min(1).default("postgresql://postgres:postgres@127.0.0.1:54322/postgres"),
+  JUDGE_ADAPTER: z.enum(["fake", "openai"]).default("fake"),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  PRIMARY_JUDGE_MODEL: z.string().min(1).max(100).optional(),
+  ADJUDICATION_MODEL: z.string().min(1).max(100).optional(),
+  REVEAL_COMPARISON_MODEL: z.string().min(1).max(100).optional(),
+}).superRefine((value, context) => {
+  if (value.JUDGE_ADAPTER === "openai" && !value.OPENAI_API_KEY) context.addIssue({ code: "custom", path: ["OPENAI_API_KEY"], message: "Required for OpenAI Judge" });
+  if (value.JUDGE_ADAPTER === "openai" && !value.PRIMARY_JUDGE_MODEL) context.addIssue({ code: "custom", path: ["PRIMARY_JUDGE_MODEL"], message: "Required for OpenAI Judge" });
 });
 
 export type ServerConfig = Readonly<z.infer<typeof serverConfigSchema>>;

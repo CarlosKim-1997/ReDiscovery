@@ -1,26 +1,17 @@
-import type { JudgeNodeResult, JudgeVerdict } from "@/domain/play/judgment";
-import type { JudgePort } from "@/ports/judge";
+import type { JudgeExecution, JudgePort, UnvalidatedJudgeNodeResult } from "@/ports/judge";
 
-interface EvidenceCoordinates {
-  readonly start: number;
-  readonly end: number;
-}
-
-function result(nodeId: string, status: JudgeNodeResult["status"], evidence: EvidenceCoordinates): JudgeNodeResult {
+function result(nodeId: string, status: UnvalidatedJudgeNodeResult["status"], evidenceText: string): UnvalidatedJudgeNodeResult {
   return status === "ABSENT"
     ? { nodeId, status }
-    : { nodeId, status, evidence };
+    : { nodeId, status, evidenceText };
 }
 
 export class FakeJudgeAdapter implements JudgePort {
-  async evaluate({ currentAnswer, rubric }: Parameters<JudgePort["evaluate"]>[0]): Promise<JudgeVerdict> {
+  async evaluate({ currentAnswer, rubric }: Parameters<JudgePort["evaluate"]>[0]):Promise<JudgeExecution> {
     if (rubric.discriminator !== "organizational-communication-structure-v1") throw new Error("UNSUPPORTED_FAKE_RUBRIC");
     const nodeIds = rubric.nodes.map(({ id }) => id);
     const answer = currentAnswer.trim();
-    const evidence = {
-      start: currentAnswer.length - currentAnswer.trimStart().length,
-      end: currentAnswer.trimEnd().length,
-    } as const;
+    const evidence = answer;
     const compact = answer.toLocaleLowerCase("ko-KR").replaceAll(/\s/g, "");
     const misconception = compact.includes("기술만") || compact.includes("소통은상관없") || compact.includes("조직은상관없");
     const mentionsCommunication = compact.includes("소통") || compact.includes("의사소통") || compact.includes("대화");
@@ -31,17 +22,17 @@ export class FakeJudgeAdapter implements JudgePort {
     const full = mentionsCommunication && mentionsOrganization && mentionsDesign && mentionsSystem && mentionsBoundary;
 
     if (misconception) {
-      return {
+      return { verdict: {
         answerType: "REASONING",
         ambiguity: "NONE",
         nodes: nodeIds.map((nodeId) => result(nodeId, nodeId === "SYSTEM_RESEMBLANCE" ? "CONTRADICTED" : "ABSENT", evidence)),
-      };
+      }, attempts: [fakeAttempt()] };
     }
     if (full) {
-      return { answerType: "REASONING", ambiguity: "NONE", nodes: nodeIds.map((nodeId) => result(nodeId, "DISCOVERED", evidence)) };
+      return { verdict: { answerType: "REASONING", ambiguity: "NONE", nodes: nodeIds.map((nodeId) => result(nodeId, "DISCOVERED", evidence)) }, attempts: [fakeAttempt()] };
     }
     if (mentionsCommunication || (mentionsOrganization && mentionsBoundary)) {
-      return {
+      return { verdict: {
         answerType: "REASONING",
         ambiguity: answer.length < 15 ? "TOO_SHORT" : "NONE",
         nodes: [
@@ -50,12 +41,16 @@ export class FakeJudgeAdapter implements JudgePort {
           result("DECISION_CLUSTERING", mentionsDesign ? "PARTIAL" : "ABSENT", evidence),
           result("SYSTEM_RESEMBLANCE", mentionsSystem ? "PARTIAL" : "ABSENT", evidence),
         ],
-      };
+      }, attempts: [fakeAttempt()] };
     }
-    return {
+    return { verdict: {
       answerType: answer.length === 0 ? "EMPTY" : "REASONING",
       ambiguity: answer.length < 15 ? "TOO_SHORT" : "NONE",
       nodes: nodeIds.map((nodeId) => result(nodeId, "ABSENT", evidence)),
-    };
+    }, attempts: [fakeAttempt()] };
   }
+}
+
+function fakeAttempt() {
+  return { attempt: 1, provider: "fake", model: "fake-judge-v1", promptVersion: "fake-v1", schemaValid: true, resultStatus: "SUCCEEDED", latencyMs: 0 } as const;
 }

@@ -4,7 +4,7 @@ import { parseServerConfig } from "@/config/schema";
 describe("server configuration", () => {
   it("boots locally without credentials", () => {
     expect(parseServerConfig({})).toEqual({
-      NODE_ENV: "development", APP_ENV: "local", CONFIG_VERSION: "m0-v1", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+      NODE_ENV: "development", APP_ENV: "local", CONFIG_VERSION: "m0-v1", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres", JUDGE_ADAPTER: "fake",
     });
   });
 
@@ -13,7 +13,7 @@ describe("server configuration", () => {
       NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2",
       PRIVATE_SECRET: "must-not-be-exported",
     });
-    expect(config).toEqual({ NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres" });
+    expect(config).toEqual({ NODE_ENV: "production", APP_ENV: "staging", CONFIG_VERSION: "m0-v2", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres", JUDGE_ADAPTER: "fake" });
     expect(Object.isFrozen(config)).toBe(true);
   });
 
@@ -29,5 +29,14 @@ describe("server configuration", () => {
 
   it("never includes environment values in diagnostics", () => {
     expect(() => parseServerConfig({ APP_ENV: "secret-value" })).toThrow(/^Invalid server configuration: APP_ENV$/);
+  });
+
+  it("requires server-only key and model only when the OpenAI adapter is selected",()=>{
+    expect(()=>parseServerConfig({JUDGE_ADAPTER:"openai"})).toThrow(/OPENAI_API_KEY, PRIMARY_JUDGE_MODEL/);
+    expect(parseServerConfig({JUDGE_ADAPTER:"openai",OPENAI_API_KEY:"secret",PRIMARY_JUDGE_MODEL:"candidate"})).toMatchObject({JUDGE_ADAPTER:"openai",OPENAI_API_KEY:"secret",PRIMARY_JUDGE_MODEL:"candidate"});
+  });
+
+  it("does not recognize browser-prefixed OpenAI configuration",()=>{
+    expect(parseServerConfig({NEXT_PUBLIC_OPENAI_API_KEY:"leak"} as Record<string,string>)).not.toHaveProperty("NEXT_PUBLIC_OPENAI_API_KEY");
   });
 });

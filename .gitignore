@@ -4,6 +4,8 @@ out/
 coverage/
 playwright-report/
 test-results/
+artifacts/eval/judge/
+.eval-tmp/
 *.tsbuildinfo
 next-env.d.ts
 .env*

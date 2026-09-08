@@ -1,7 +1,7 @@
-# G1 — M1 Deterministic Walking Skeleton
+# G1 — M3 Real Judge and Gold Evaluation
 
 G1 Master Codex Handoff Packet v1이 canonical implementation specification이다.
-현재 구현 범위는 **M1까지**다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
+현재 구현 범위는 **M3까지**이며 M4 이상 기능은 포함하지 않는다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
 
 ## 실행
 
@@ -33,9 +33,9 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-<http://localhost:3000>에서 Conway 단일 fixture의 deterministic Daily를 실행한다.
-서버 메모리가 권위 상태이며 브라우저 reload 복구를 위해 공개 세션 snapshot만
-`localStorage`에 저장한다. 이는 M1 전용이고 M2에서 서버 영속성으로 교체한다.
+<http://localhost:3000>에서 PostgreSQL 권위의 Conway Daily를 실행한다.
+기본 `JUDGE_ADAPTER=fake`는 결정적 로컬 실행을 유지한다. 실제 Judge는 서버 전용
+`JUDGE_ADAPTER=openai`, `OPENAI_API_KEY`, `PRIMARY_JUDGE_MODEL`로 명시적으로 켠다.
 `GET /api/health`는 서버 프로세스의 liveness와 서버 시각만 반환한다.
 외부 서비스의 readiness, 비용 circuit 상태, Daily availability를 의미하지 않는다.
 
@@ -49,6 +49,14 @@ pnpm build
 pnpm exec playwright install chromium
 pnpm test:e2e
 ```
+
+실제 Gold 평가(일반 CI와 분리):
+
+```sh
+OPENAI_API_KEY=... PRIMARY_JUDGE_MODEL=... pnpm eval:judge
+```
+
+평가 보고서는 `artifacts/eval/judge/`에 생성되며 원문 답변·프롬프트·공급자 응답은 포함하지 않는다.
 
 E2E는 이미 빌드된 앱을 `127.0.0.1:3100`에서 자동 실행한다.
 다른 프로세스가 해당 포트를 사용하면 종료 후 다시 실행한다.
@@ -69,11 +77,14 @@ GitHub Actions는 동일한 검사를 Linux에서 수행하도록 구성되어 �
 | --- | --- | --- |
 | `APP_ENV` | `local` | `local`, `test`, `staging`, `production` |
 | `CONFIG_VERSION` | `m0-v1` | 1~64자, 영문·숫자·점·밑줄·하이픈 |
+| `JUDGE_ADAPTER` | `fake` | `fake`, `openai` |
+| `OPENAI_API_KEY` | 없음 | `openai` 모드에서만 필수, 서버 전용 |
+| `PRIMARY_JUDGE_MODEL` | 없음 | `openai` 모드/실평가에서 필수, 서버 전용 |
 | `NODE_ENV` | `development` | Next.js가 관리하는 `development`, `test`, `production` |
 
 서버 config는 Zod로 검증하고 freeze한다. 알 수 없는 환경 변수는 반환 config에 포함하지 않는다.
-M0에는 `NEXT_PUBLIC_*` 값, DB·OAuth·Redis·OpenAI 키가 필요 없다. OpenAI 호출은 0이다.
-향후 feature flags와 vendor 설정은 해당 milestone에서 추가한다.
+`NEXT_PUBLIC_OPENAI_*`는 금지한다. Fake 모드와 CI에는 OpenAI 키가 필요 없고 실제
+Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 
 ## 구조와 기록
 
@@ -82,3 +93,4 @@ M0에는 `NEXT_PUBLIC_*` 값, DB·OAuth·Redis·OpenAI 키가 필요 없다. Ope
 - [Specification authority](docs/spec-authority.md): canonical 원문 우선순위와 구현 범위
 - [M0 verification](docs/milestones/M0.md): 변경 파일, 검증 결과, 남은 문제
 - [M1 walking skeleton](docs/milestones/M1.md): 상태 흐름, FakeJudge, resume, Reveal, 검증
+- [M3 Judge and evaluation](docs/milestones/M3.md): OpenAI adapter, Gold dataset, 평가/검증 상태
