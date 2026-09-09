@@ -290,7 +290,7 @@ export function buildLockVerifierAcceptance(input: AcceptanceInput) {
 }
 
 export function assertLockVerifierReportRedacted(report: unknown, answers: readonly string[]) {
-  const forbidden = new Set(["answers", "text", "answerText", "evidenceText", "literalEvidence", "fullPrompt", "providerOutput", "providerResponse"]);
+  const forbidden = new Set(["answers", "text", "answerText", "evidenceText", "literalEvidence", "prompt", "rawPrompt", "fullPrompt", "providerPayload", "providerOutput", "providerResponse"]);
   const inspect = (value: unknown): void => {
     if (!value || typeof value !== "object") return;
     for (const [key, nested] of Object.entries(value)) {

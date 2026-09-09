@@ -139,3 +139,12 @@ or represented in persistence. `lock-verify-v1` and `lock-verifier-dev-v1` are
 development identities. Live execution is an explicit local command using
 `ADJUDICATION_MODEL`; normal CI and gameplay remain unaffected by its absence or
 failure.
+
+M3-B3 v2 adds a distinct factorized proof port without changing v1. Deterministic
+application code creates exact UTF-16 evidence units from supplied answers and
+derives binary support from provider-reported endorsement, reference resolution,
+semantic-match class, and unit IDs. The provider schema contains no final support
+or Lock field. Cross-answer resolution is admissible only with a distinct,
+supplied-answer antecedent unit. OpenAI request construction remains isolated in
+`src/adapters/openai-lock-verifier-v2`; the v2 port can be implemented by another
+provider. Like v1, v2 is offline evaluator-only and has no runtime wiring.

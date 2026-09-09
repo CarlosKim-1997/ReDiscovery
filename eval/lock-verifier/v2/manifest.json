@@ -1,0 +1,22 @@
+{
+  "dataset_version": "lock-verifier-dev-v2",
+  "prompt_version": "lock-verify-v2",
+  "content_slug": "conway-law",
+  "content_version": 3,
+  "base_suite": "../v1",
+  "targeted_cases_file": "targeted-cases.json",
+  "expected_inherited_case_count": 140,
+  "expected_targeted_case_count": 24,
+  "expected_total_case_count": 164,
+  "candidate_model": "gpt-5.6-luna",
+  "pricing_usd_per_million": { "input": 0.2, "output": 1.2, "checked_at": "2026-09-09" },
+  "targeted_category_counts": { "reference": 6, "relation-strength": 6, "endorsement": 6, "evidence-format": 6 },
+  "required_regression_case_ids": [
+    "messy-spacing-full-04", "messy-rejected-quote-02", "messy-rejected-quote-04",
+    "v2-reference-unresolved-01", "v2-reference-ambiguous-01", "v2-reference-self-contained-01", "v2-reference-cross-answer-unique-01", "v2-reference-cross-answer-unresolved-01", "v2-reference-prior-shaped-01",
+    "v2-relation-relatedness-01", "v2-relation-influence-01", "v2-relation-causation-01", "v2-relation-noncanonical-complete-01", "v2-relation-short-complete-01", "v2-relation-hedged-complete-01",
+    "v2-endorsement-rejected-01", "v2-endorsement-abandoned-01", "v2-endorsement-contradiction-01", "v2-endorsement-self-correction-01", "v2-endorsement-quote-then-complete-01", "v2-endorsement-cross-answer-correction-01",
+    "v2-format-spacing-01", "v2-format-unicode-01", "v2-format-no-punctuation-01", "v2-format-long-single-01", "v2-format-multiple-units-01", "v2-format-cross-answer-01"
+  ],
+  "notes": "Development-only v2 suite: the complete immutable 140-case v1 corpus plus 24 failure-taxonomy-derived calibration/regression cases. It is not a holdout."
+}
