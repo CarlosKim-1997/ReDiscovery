@@ -1,6 +1,6 @@
 # 0004 — Versioned v3 calibration, recursive suites, and redacted failures
 
-Status: implemented as an M3 development candidate
+Status: implemented and evaluated as an M3 development candidate; not promoted to production
 
 ## Decision
 
@@ -35,5 +35,16 @@ contradicted.
 
 ## Deferred
 
-V3 provider evaluation, a blind/final holdout, production prompt/content promotion,
-model selection, and every M4-or-later capability remain outside this change.
+A blind/final holdout, production prompt/content promotion, model selection, and
+every M4-or-later capability remain outside this change.
+
+## Recorded outcome
+
+After the implementation was frozen at
+`0b5bb72c8f9c012deabe88eac5be0e400b77ebf1`, explicit local Luna and Terra
+development runs evaluated the same `judge-v3` / `judge-dev-v3` / Conway v3
+identity. Their immutable evidence is recorded in
+[`judge-v3-luna-baseline.md`](../evals/judge-v3-luna-baseline.md) and
+[`judge-v3-terra-comparison.md`](../evals/judge-v3-terra-comparison.md). Hosted
+credential-free deterministic checks for that commit passed in
+[`run 34250400708`](https://github.com/CarlosKim-1997/ReDiscovery/actions/runs/34250400708).

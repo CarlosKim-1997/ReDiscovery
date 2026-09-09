@@ -12,6 +12,8 @@ v3 to production, and the generated local report is not committed.
 - Dataset: `judge-dev-v3`
 - Content: `conway-law` version 3
 - Cases: 124
+- Source artifact: `judge-dev-v3-1788885568608.json` (gitignored, redacted)
+- Source artifact SHA-256: `258cf228e849a716526fa4c4e143060464d37eddc8f148980fdd5d4b1230f2f9`
 
 | Historical identity | SHA-256 |
 | --- | --- |
@@ -28,12 +30,22 @@ v3 to production, and the generated local report is not committed.
 | Metric | Result |
 | --- | ---: |
 | Node macro F1 | 0.8413 |
+| DISCOVERED precision / recall / F1 | 0.9602 / 0.9190 / 0.9392 |
+| PARTIAL F1 | 0.5243 |
+| ABSENT F1 | 0.9339 |
+| CONTRADICTED F1 | 0.9677 |
 | Core DISCOVERED precision | 0.9487 |
 | Core DISCOVERED recall | 0.9136 |
 | Premature-lock proxy | **2** |
 | Premature-unlock proxy | **6** |
+| AnswerType accuracy | 0.9839 |
+| Ambiguity accuracy | 0.8306 |
+| Schema-valid rate | 0.9919 |
+| Retries / provider failures | 2 / 0 |
+| Latency p50 / p95 | 5,474 ms / 10,352 ms |
+| Total tokens | 158,144 |
+| Estimated cost | $0.0765018 |
 
 The two premature-lock cases were `messy-spacing-full-04` and
-`messy-rejected-quote-04`. These supplied measurements are historical evidence;
-metrics not present in the frozen record are intentionally not reconstructed.
-
+`messy-rejected-quote-04`. These measurements were read directly from the source
+artifact identified above; no metric was reconstructed from memory.

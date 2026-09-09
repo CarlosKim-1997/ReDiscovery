@@ -35,7 +35,7 @@ holdout.
 | --- | --- |
 | lock-verify-v1 prompt | `bd6dc56f74c39016c61048fc4f437a63bdb6d15a9ad5bc59ac782e62f4e7607f` |
 | verifier manifest | `5a7905877ec9d27cabdd7eaf90a04d51286e0c7414aba32eb74e02fdcf3350d3` |
-| multi-answer fixtures | `d4016b1b7e0f8ca06fb81eb3e44b3fc981ce0335ff288ea541cbf3e9c1c8e45a` |
+| reviewed multi-answer fixtures | `d4016b1b7e0f8ca06fb81eb3e44b3fc981ce0335ff288ea541cbf3e9c1c8e45a` |
 
 The evaluator reports per-node support metrics, deterministic approval metrics,
 false approvals/rejections, retries, failures, latency, token/cost totals, and only

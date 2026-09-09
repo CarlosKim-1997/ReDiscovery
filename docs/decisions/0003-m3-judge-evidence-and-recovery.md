@@ -1,6 +1,6 @@
 # 0003 — Untrusted Judge output, literal evidence, and reversible EVALUATING
 
-Status: implemented; real-provider acceptance gate pending
+Status: implemented; M3-A real-provider baseline and hosted CI completed
 
 ## Decision
 
