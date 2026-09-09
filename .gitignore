@@ -5,6 +5,7 @@ coverage/
 playwright-report/
 test-results/
 artifacts/eval/judge/
+artifacts/eval/lock-verifier/
 .eval-tmp/
 *.tsbuildinfo
 next-env.d.ts

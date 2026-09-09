@@ -125,3 +125,17 @@ Redacted `ai_runs.failure_category` distinguishes structured-output, node-set,
 status/evidence, non-literal, and non-unique evidence failures without retaining
 raw answers, prompts, evidence, or provider bodies. Runtime composition and the
 Daily schedule continue to select v1; deterministic policy still owns Lock.
+
+M3-B3 adds a second, independent `LockVerifierPort` and an OpenAI adapter used only
+by the offline development evaluator. The verifier receives required-node IDs and
+rubric descriptions plus answer IDs/text; it receives no Judge result, guidance,
+SERVER_POLICY, Reveal data, hidden identity, or gameplay state. Its provider-neutral
+result says only `VERIFIED` or `INSUFFICIENT` per required node. Application
+validation resolves unique literal citations to answer-relative spans, and a pure
+evaluator helper approves only when every required node is verified.
+
+The verifier is not registered in `server/container.ts`, called by Daily use cases,
+or represented in persistence. `lock-verify-v1` and `lock-verifier-dev-v1` are
+development identities. Live execution is an explicit local command using
+`ADJUDICATION_MODEL`; normal CI and gameplay remain unaffected by its absence or
+failure.

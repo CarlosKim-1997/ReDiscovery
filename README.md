@@ -74,6 +74,21 @@ mismatches. Do not put the key in a file or CI. M3-B2 does not execute a live ru
 
 평가 보고서는 `artifacts/eval/judge/`에 생성되며 원문 답변·프롬프트·공급자 응답은 포함하지 않는다.
 
+독립 Lock evidence verifier의 향후 로컬 개발 평가는 다음처럼 별도로 실행한다.
+일반 CI나 게임 런타임에서는 실행되지 않으며, M3-B3 구현 검증 중에는 실제 호출을
+하지 않는다.
+
+```powershell
+$env:ADJUDICATION_MODEL = "gpt-5.6-luna"
+$env:OPENAI_API_KEY = "<local secret>"
+pnpm eval:lock-verifier
+```
+
+Luna가 verifier acceptance gate를 통과하지 못한 경우에만 Terra 비교를 실행한다.
+보고서는 `artifacts/eval/lock-verifier/`에 생성되며 원문 답변, 인용 evidence,
+프롬프트, 공급자 payload를 포함하지 않는다. 명령 실패는 게임 상태나 runtime
+fallback을 변경하지 않는다.
+
 E2E는 이미 빌드된 앱을 `127.0.0.1:3100`에서 자동 실행한다.
 다른 프로세스가 해당 포트를 사용하면 종료 후 다시 실행한다.
 Desktop Chromium과 mobile Chromium에서 페이지, 새로고침, reduced motion 환경,
@@ -96,6 +111,7 @@ GitHub Actions는 동일한 검사를 Linux에서 수행하도록 구성되어 �
 | `JUDGE_ADAPTER` | `fake` | `fake`, `openai` |
 | `OPENAI_API_KEY` | 없음 | `openai` 모드에서만 필수, 서버 전용 |
 | `PRIMARY_JUDGE_MODEL` | 없음 | `openai` 모드/실평가에서 필수, 서버 전용 |
+| `ADJUDICATION_MODEL` | 없음 | Lock verifier 로컬 실평가에서만 필수, 게임 런타임에서는 미사용 |
 | `NODE_ENV` | `development` | Next.js가 관리하는 `development`, `test`, `production` |
 
 서버 config는 Zod로 검증하고 freeze한다. 알 수 없는 환경 변수는 반환 config에 포함하지 않는다.
@@ -116,3 +132,6 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [Judge v2 Luna development baseline](docs/evals/judge-v2-luna-dev-baseline.md): frozen first live v2 result
 - [Judge v3 semantic contract](docs/evals/judge-v3-semantic-contract.md): causal direction, threshold audit, and v2→v3 delta
 - [M3-B2 decision record](docs/decisions/0004-m3-b2-v3-calibration.md): versioning, inheritance, diagnostics, and production isolation
+- [Judge v3 Luna baseline](docs/evals/judge-v3-luna-baseline.md): frozen first v3 model result
+- [Judge v3 Terra comparison](docs/evals/judge-v3-terra-comparison.md): frozen same-identity comparison
+- [M3-B3 decision record](docs/decisions/0005-m3-b3-lock-evidence-verifier.md): independent evidence gate and runtime isolation

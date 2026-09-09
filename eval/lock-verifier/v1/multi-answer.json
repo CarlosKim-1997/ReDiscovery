@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "multi-split-complete-01",
+      "answers": [
+        {"answerId": "a1", "text": "기능별 팀으로 사람들이 나뉘어 일한다."},
+        {"answerId": "a2", "text": "팀 안에서는 자주 이야기하고 팀 밖은 소통이 어려워서 제품 모듈 경계도 그 팀 경계를 따라간다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The first answer supplies the actor boundary; the second independently supplies communication contrast and downstream system correspondence."
+    },
+    {
+      "id": "multi-communication-group-01",
+      "answers": [
+        {"answerId": "a1", "text": "서로 자주 대화할 수 있는 사람끼리 한 묶음이 된다."},
+        {"answerId": "a2", "text": "결과물의 연결 경계가 그 대화 가능한 묶음을 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "A communication-defined actor group completes both boundary nodes, while the later answer explicitly frames output structure as reflection."
+    },
+    {
+      "id": "multi-weak-then-full-01",
+      "answers": [
+        {"answerId": "a1", "text": "조직에서는 소통이 중요하다."},
+        {"answerId": "a2", "text": "팀 안 대화는 쉽고 팀 사이는 어려워서 시스템 경계가 팀 경계를 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The weak first answer proves nothing, but the later answer genuinely supplies all three required relationships."
+    },
+    {
+      "id": "multi-missing-final-step-01",
+      "answers": [
+        {"answerId": "a1", "text": "역할별 팀 경계가 있고 팀 안 대화는 쉽지만 팀 밖은 어렵다."},
+        {"answerId": "a2", "text": "그 차이가 제품에 영향을 준다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "INSUFFICIENT"},
+      "rationale": "Generic product influence does not state structural correspondence, so the missing final step cannot be inferred."
+    },
+    {
+      "id": "multi-later-system-evidence-01",
+      "answers": [
+        {"answerId": "a1", "text": "부서 안 대화는 잦고 부서 사이는 드물어서 결과물에도 관련이 있다."},
+        {"answerId": "a2", "text": "제품 모듈의 경계가 그 부서별 소통 경계를 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The first generic relation is insufficient for resemblance, but the second answer later provides the exact downstream structural relationship."
+    },
+    {
+      "id": "multi-self-correction-01",
+      "answers": [
+        {"answerId": "a1", "text": "처음에는 기술만 중요하다고 생각했다."},
+        {"answerId": "a2", "text": "그 생각을 고친다. 팀 사이 소통은 어렵고 팀 안 결정이 모여 결과물 경계가 팀 경계를 따라간다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The later answer explicitly retracts the earlier view and supplies complete evidence without importing hidden knowledge."
+    },
+    {
+      "id": "multi-contradiction-corrected-01",
+      "answers": [
+        {"answerId": "a1", "text": "조직과 소통은 제품 구조와 아무 관계가 없다."},
+        {"answerId": "a2", "text": "아니다. 팀별로 대화 가능한 범위가 다르고 시스템 모듈은 그 범위를 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "An explicit correction replaces the contradiction, and the corrected answer contains all required evidence."
+    },
+    {
+      "id": "multi-independent-nodes-01",
+      "answers": [
+        {"answerId": "a1", "text": "팀 A와 팀 B는 갈라져 있고 각 팀 안에서는 자주 말하지만 서로는 대화하기 어렵다."},
+        {"answerId": "a2", "text": "제품의 A/B 모듈 경계가 그 팀별 소통 경계를 따라 형성된다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "No answer states the whole mechanism, but required nodes are independently and literally supported across the two answers."
+    },
+    {
+      "id": "multi-all-weak-01",
+      "answers": [
+        {"answerId": "a1", "text": "팀과 소통이 있다."},
+        {"answerId": "a2", "text": "제품 구조도 관련이 있을 수 있다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "INSUFFICIENT", "COMMUNICATION_FRICTION": "INSUFFICIENT", "SYSTEM_RESEMBLANCE": "INSUFFICIENT"},
+      "rationale": "Both answers contain relevant entities but no complete grouping, communication difference, or downstream structural relationship."
+    },
+    {
+      "id": "multi-no-team-word-01",
+      "answers": [
+        {"answerId": "a1", "text": "말을 자주 섞을 수 있는 사람끼리 작업 범위가 나뉜다."},
+        {"answerId": "a2", "text": "서비스 구성요소의 경계도 그 대화 범위를 그대로 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "Communication-defined grouping is sufficient without team vocabulary, and output reflection is explicit."
+    },
+    {
+      "id": "multi-keywords-only-01",
+      "answers": [
+        {"answerId": "a1", "text": "팀 소통 경계 조직."},
+        {"answerId": "a2", "text": "제품 모듈 구조 영향."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "INSUFFICIENT", "COMMUNICATION_FRICTION": "INSUFFICIENT", "SYSTEM_RESEMBLANCE": "INSUFFICIENT"},
+      "rationale": "Keyword lists cannot establish any required relationship."
+    },
+    {
+      "id": "multi-reverse-then-correct-01",
+      "answers": [
+        {"answerId": "a1", "text": "제품 모듈이 먼저 조직 경계를 만든다고 생각했다."},
+        {"answerId": "a2", "text": "정정하면 부서별 소통 범위가 다르고 제품 모듈 경계가 그 소통 범위를 따라간다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The reverse account is explicitly corrected; the second answer supplies a communication boundary and the proper downstream direction."
+    },
+    {
+      "id": "multi-hedged-complete-01",
+      "answers": [
+        {"answerId": "a1", "text": "아마 팀 안에서는 대화가 쉽고 팀 밖에서는 어려운 듯하다."},
+        {"answerId": "a2", "text": "그래서 시스템 경계가 그 팀별 대화 경계를 반영할 가능성이 있다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "Hedging does not erase complete grouping, communication contrast, or downstream reflection propositions."
+    },
+    {
+      "id": "multi-bare-resemblance-01",
+      "answers": [
+        {"answerId": "a1", "text": "역할별 팀 경계가 분명하다."},
+        {"answerId": "a2", "text": "제품 구조와 팀 구조가 비슷해 보인다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "INSUFFICIENT", "SYSTEM_RESEMBLANCE": "INSUFFICIENT"},
+      "rationale": "Bare similarity lacks communication evidence and does not frame output structure as downstream or reflective."
+    },
+    {
+      "id": "multi-strong-communication-generic-output-01",
+      "answers": [
+        {"answerId": "a1", "text": "처음에는 소통이라고만 썼다."},
+        {"answerId": "a2", "text": "구성원은 대화 가능한 집단별로 나뉘고 집단 안 대화는 잦지만 밖과는 어렵다. 이것이 제품에 영향을 준다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "INSUFFICIENT"},
+      "rationale": "The later answer repairs grouping and communication evidence, but generic product influence still omits structural correspondence."
+    },
+    {
+      "id": "multi-required-nodes-separated-01",
+      "answers": [
+        {"answerId": "a1", "text": "부서 경계가 사람들을 서로 다른 집단으로 나눈다."},
+        {"answerId": "a2", "text": "부서 안 소통은 잦고 부서 사이는 드물며 제품 구조는 그 소통 경계를 반영한다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES": "VERIFIED", "COMMUNICATION_FRICTION": "VERIFIED", "SYSTEM_RESEMBLANCE": "VERIFIED"},
+      "rationale": "The boundary is supplied first, while communication contrast and output reflection are independently supplied later."
+    }
+  ]
+}

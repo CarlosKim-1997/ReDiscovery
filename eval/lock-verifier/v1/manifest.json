@@ -1,0 +1,33 @@
+{
+  "dataset_version": "lock-verifier-dev-v1",
+  "prompt_version": "lock-verify-v1",
+  "content_slug": "conway-law",
+  "content_version": 3,
+  "source_judge_suite": "../../judge/v3",
+  "multi_answer_file": "multi-answer.json",
+  "expected_single_case_count": 124,
+  "expected_multi_case_count": 16,
+  "expected_total_case_count": 140,
+  "candidate_model": "gpt-5.6-luna",
+  "pricing_usd_per_million": {
+    "input": 0.2,
+    "output": 1.2,
+    "checked_at": "2026-09-09"
+  },
+  "regression_subsets": [
+    "spacing-full",
+    "rejected-quote",
+    "self-correction",
+    "hedging",
+    "correct-then-contradict",
+    "keyword-stuffing",
+    "prior-state",
+    "partial-overlap"
+  ],
+  "required_regression_case_ids": [
+    "messy-spacing-full-04",
+    "messy-rejected-quote-02",
+    "messy-rejected-quote-04"
+  ],
+  "notes": "Development-only verifier corpus. It is not a holdout and mechanically derives single-answer support from frozen judge-dev-v3 labels."
+}
