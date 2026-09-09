@@ -9,8 +9,11 @@ import { LOCK_VERIFIER_PROMPT_VERSION } from "@/shared/lock-verifier-prompts";
 import { loadCases } from "../../tooling/judge-eval.mts";
 import {
   assertLockVerifierReportRedacted,
+  buildLockVerifierAcceptance,
   loadLockVerifierCases,
   loadLockVerifierManifest,
+  summarizeLockVerifierResults,
+  type LockVerifierEvalResult,
 } from "../../tooling/lock-verifier-eval.mts";
 
 describe("M3 Lock Verifier development evaluation", () => {
@@ -68,6 +71,63 @@ describe("M3 Lock Verifier development evaluation", () => {
     expect(() => assertLockVerifierReportRedacted({ answers: ["private answer"] }, ["private answer"])).toThrow(/forbidden raw field/);
     expect(() => assertLockVerifierReportRedacted({ note: "private answer" }, ["private answer"])).toThrow(/raw answer/);
     expect(() => assertLockVerifierReportRedacted({ evidenceText: "fragment" }, ["private answer"])).toThrow(/forbidden raw field/);
+  });
+
+  it("separates unavailable cases from semantic approval and node errors", () => {
+    const results: LockVerifierEvalResult[] = [
+      { id: "semantic-tp", expectedApproval: true, expectedSupports: { NODE: "VERIFIED" }, outcome: "EVALUATED", predictedApproval: true, predictedSupports: { NODE: "VERIFIED" } },
+      { id: "semantic-fp", expectedApproval: false, expectedSupports: { NODE: "INSUFFICIENT" }, outcome: "EVALUATED", predictedApproval: true, predictedSupports: { NODE: "VERIFIED" } },
+      { id: "semantic-fn", expectedApproval: true, expectedSupports: { NODE: "VERIFIED" }, outcome: "EVALUATED", predictedApproval: false, predictedSupports: { NODE: "INSUFFICIENT" } },
+      { id: "operational-unavailable", expectedApproval: false, expectedSupports: { NODE: "INSUFFICIENT" }, outcome: "UNAVAILABLE" },
+    ];
+
+    const summary = summarizeLockVerifierResults(results, ["NODE"]);
+    expect(summary.availability).toEqual({ evaluated_case_count: 3, unavailable_case_count: 1, unavailable_case_ids: ["operational-unavailable"] });
+    expect(summary.approval).toMatchObject({ case_count: 3, tp: 1, fp: 1, fn: 1, tn: 0, false_approval_case_ids: ["semantic-fp"], false_rejection_case_ids: ["semantic-fn"] });
+    expect(summary.support.per_node.NODE!.VERIFIED).toMatchObject({ tp: 1, fp: 1, fn: 1, false_positive_case_ids: ["semantic-fp"], false_negative_case_ids: ["semantic-fn"] });
+  });
+
+  it("reports every frozen hard gate without the obsolete 0.98 threshold", () => {
+    const acceptance = buildLockVerifierAcceptance({
+      caseCount: 140,
+      approval: { case_count: 139, precision: 0.9545, recall: 0.8936, tp: 42, fp: 2, fn: 5, tn: 90, false_approval_count: 2, false_approval_case_ids: ["false-approval"], false_rejection_count: 5, false_rejection_case_ids: ["false-rejection"] },
+      overallVerifiedPrecision: 0.9628,
+      perNodeVerifiedPrecision: { TEAM_BOUNDARIES: 0.9718, COMMUNICATION_FRICTION: 0.9841, SYSTEM_RESEMBLANCE: 0.9259 },
+      requiredRegressionSupportsExactMatch: false,
+      schemaApplicationValidCount: 139,
+      unrecoveredVerificationFailureCount: 1,
+      leakageCount: 0,
+      retryCaseCount: 1,
+    });
+
+    expect(acceptance.contract).toMatchObject({ overall_verified_precision_minimum: 0.95, each_required_node_verified_precision_minimum: 0.95, retry_case_rate_maximum: 0.05 });
+    expect(acceptance.hard_gates).toMatchObject({
+      false_approval_count_equals_0: false,
+      approval_precision_equals_1: false,
+      approval_recall_at_least_085: true,
+      overall_verified_precision_at_least_095: true,
+      each_required_node_verified_precision_at_least_095: { per_node: { TEAM_BOUNDARIES: true, COMMUNICATION_FRICTION: true, SYSTEM_RESEMBLANCE: false }, pass: false },
+      required_regression_supports_exact_match: false,
+      schema_application_valid_count_equals_140: false,
+      unrecovered_verification_failure_count_equals_0: false,
+      raw_answer_literal_evidence_prompt_provider_payload_leakage_count_equals_0: true,
+      retry_case_rate_at_most_005: true,
+    });
+    expect(acceptance).toMatchObject({ all_hard_gates_pass: false, development_live_gate: "FAIL", actual: { retry_case_count: 1, retry_case_rate: 0.0071 } });
+    expect(JSON.stringify(acceptance)).not.toContain("0.98");
+
+    const passing = buildLockVerifierAcceptance({
+      caseCount: 140,
+      approval: { case_count: 140, precision: 1, recall: 0.85, tp: 34, fp: 0, fn: 6, tn: 100, false_approval_count: 0, false_approval_case_ids: [], false_rejection_count: 6, false_rejection_case_ids: ["recoverable"] },
+      overallVerifiedPrecision: 0.95,
+      perNodeVerifiedPrecision: { NODE_A: 0.95, NODE_B: 1 },
+      requiredRegressionSupportsExactMatch: true,
+      schemaApplicationValidCount: 140,
+      unrecoveredVerificationFailureCount: 0,
+      leakageCount: 0,
+      retryCaseCount: 7,
+    });
+    expect(passing).toMatchObject({ all_hard_gates_pass: true, development_live_gate: "PASS", actual: { retry_case_rate: 0.05 } });
   });
 
   it("freezes every v3 comparison identity", async () => {

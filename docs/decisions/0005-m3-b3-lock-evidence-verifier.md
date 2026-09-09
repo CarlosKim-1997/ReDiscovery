@@ -53,9 +53,11 @@ provider result and does not consume that authorization.
 ## Operations and deferred work
 
 `pnpm eval:lock-verifier` requires explicit local `OPENAI_API_KEY` and
-`ADJUDICATION_MODEL`. The first future run is Luna. No automatic second Luna or
-Terra run is authorized. The command never runs in normal CI and failure does not
-modify gameplay or unlock a fallback path.
+`ADJUDICATION_MODEL`. The authorized Luna run has completed and failed the frozen
+development gate; its immutable evidence is recorded in the
+[Luna development baseline](../evals/lock-verifier-v1-luna-dev-baseline.md). No
+automatic second Luna or Terra run is authorized. The command never runs in normal
+CI and failure does not modify gameplay or unlock a fallback path.
 
 The intended later no-fail behavior is documented but not implemented: a semantic
 self-discovery Lock candidate would require verification; rejection would continue
