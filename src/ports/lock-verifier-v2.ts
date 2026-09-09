@@ -91,6 +91,86 @@ export class LockVerifierV2ExecutionError extends Error {
   }
 }
 
+export class LockProofV2ValidationError extends Error {
+  constructor(readonly category: LockVerifierV2FailureCategory) {
+    super(category);
+  }
+}
+
+export function validateLockProofV2Structure(
+  proof: UnvalidatedLockProof,
+  input: LockVerifierV2Input,
+): void {
+  const expectedNodeIds = input.requiredNodes.map(({ nodeId }) => nodeId);
+  const actualNodeIds = proof.nodes.map(({ nodeId }) => nodeId);
+  if (
+    actualNodeIds.length !== expectedNodeIds.length
+    || new Set(actualNodeIds).size !== actualNodeIds.length
+    || actualNodeIds.some((id) => !expectedNodeIds.includes(id))
+    || expectedNodeIds.some((id) => !actualNodeIds.includes(id))
+  ) failProofStructure("NODE_SET_INVALID");
+
+  const answerOrder = new Map(input.answers.map(({ answerId }, index) => [answerId, index]));
+  if (answerOrder.size !== input.answers.length) failProofStructure("EVIDENCE_UNIT_INVALID");
+  const units = new Map(input.evidenceUnits.map((unit) => [unit.unitId, unit]));
+  if (units.size !== input.evidenceUnits.length) failProofStructure("EVIDENCE_UNIT_INVALID");
+  for (const unit of input.evidenceUnits) {
+    const answer = input.answers[answerOrder.get(unit.answerId) ?? -1];
+    if (!answer || answer.text.slice(unit.start, unit.end) !== unit.text) {
+      failProofStructure("EVIDENCE_UNIT_INVALID");
+    }
+  }
+
+  for (const node of proof.nodes) validateNodeProofStructure(node, units, answerOrder);
+}
+
+function validateNodeProofStructure(
+  node: UnvalidatedNodeProof,
+  units: ReadonlyMap<string, LockEvidenceUnit>,
+  answerOrder: ReadonlyMap<string, number>,
+) {
+  if (new Set(node.evidenceUnitIds).size !== node.evidenceUnitIds.length) failProofStructure("PROOF_RECORD_INVALID");
+  if (new Set(node.antecedentEvidenceUnitIds).size !== node.antecedentEvidenceUnitIds.length) failProofStructure("PROOF_RECORD_INVALID");
+  if (node.evidenceUnitIds.some((id) => node.antecedentEvidenceUnitIds.includes(id))) failProofStructure("PROOF_RECORD_INVALID");
+  const evidence = resolveProofUnits(node.evidenceUnitIds, units);
+  const antecedents = resolveProofUnits(node.antecedentEvidenceUnitIds, units);
+  if (node.semanticMatch === "COMPLETE_NODE_MATCH" && evidence.length === 0) failProofStructure("PROOF_RECORD_INVALID");
+
+  if (node.referenceStatus === "SELF_CONTAINED") {
+    if (antecedents.length > 0) failProofStructure("PROOF_RECORD_INVALID");
+    if (evidence.length > 0 && new Set(evidence.map(({ answerId }) => answerId)).size !== 1) failProofStructure("PROOF_RECORD_INVALID");
+    return;
+  }
+  if (node.referenceStatus !== "UNIQUE_WITHIN_SUPPLIED_ANSWERS") {
+    if (antecedents.length > 0) failProofStructure("PROOF_RECORD_INVALID");
+    return;
+  }
+
+  if (evidence.length === 0 || antecedents.length === 0) failProofStructure("PROOF_RECORD_INVALID");
+  const referringAnswers = new Set(evidence.map(({ answerId }) => answerId));
+  const antecedentAnswers = new Set(antecedents.map(({ answerId }) => answerId));
+  if (referringAnswers.size !== 1 || antecedentAnswers.size !== 1) failProofStructure("PROOF_RECORD_INVALID");
+  const referringAnswer = [...referringAnswers][0]!;
+  const antecedentAnswer = [...antecedentAnswers][0]!;
+  if (referringAnswer === antecedentAnswer) failProofStructure("PROOF_RECORD_INVALID");
+  if (answerOrder.get(antecedentAnswer)! >= answerOrder.get(referringAnswer)!) failProofStructure("PROOF_RECORD_INVALID");
+}
+
+function resolveProofUnits(
+  ids: readonly string[],
+  units: ReadonlyMap<string, LockEvidenceUnit>,
+): LockEvidenceUnit[] {
+  return ids.map((id) => {
+    const unit = units.get(id);
+    if (!unit) failProofStructure("EVIDENCE_UNIT_INVALID");
+    return unit;
+  });
+}
+
+function failProofStructure(category: LockVerifierV2FailureCategory): never {
+  throw new LockProofV2ValidationError(category);
+}
+
 export interface LockVerifierV2Port {
   extractProof(input: LockVerifierV2Input): Promise<LockVerifierV2Execution>;
 }

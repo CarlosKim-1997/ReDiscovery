@@ -123,6 +123,78 @@ describe("M3 Lock Verifier v2 evidence and proof contract", () => {
     expect(deriveLockVerificationFromProof(proof({ referenceStatus: "AMBIGUOUS", evidenceUnitIds: ["answer-2:u1"] }), input).nodes[0]).toMatchObject({ support: "INSUFFICIENT" });
   });
 
+  it("enforces one-answer SELF_CONTAINED scope", () => {
+    const input = inputFor([
+      { answerId: "answer-1", text: "First unit. Second unit." },
+      { answerId: "answer-2", text: "Other unit." },
+    ]);
+    expect(deriveLockVerificationFromProof(proof({ evidenceUnitIds: ["answer-1:u1", "answer-1:u2"] }), input).nodes[0]).toMatchObject({ support: "VERIFIED" });
+    expect(() => deriveLockVerificationFromProof(proof({ evidenceUnitIds: ["answer-1:u1", "answer-2:u1"] }), input)).toThrowError(expect.objectContaining({ category: "PROOF_RECORD_INVALID" }));
+    expect(() => deriveLockVerificationFromProof(proof({ antecedentEvidenceUnitIds: ["answer-2:u1"] }), input)).toThrowError(expect.objectContaining({ category: "PROOF_RECORD_INVALID" }));
+  });
+
+  it("enforces ordered, single-answer UNIQUE proof roles", () => {
+    const input = inputFor([
+      { answerId: "answer-1", text: "Antecedent one. Antecedent two." },
+      { answerId: "answer-2", text: "Referring one. Referring two." },
+      { answerId: "answer-3", text: "Third one. Third two." },
+    ]);
+    const unique = (overrides: Partial<UnvalidatedNodeProof> = {}) => proof({
+      referenceStatus: "UNIQUE_WITHIN_SUPPLIED_ANSWERS",
+      evidenceUnitIds: ["answer-2:u1", "answer-2:u2"],
+      antecedentEvidenceUnitIds: ["answer-1:u1", "answer-1:u2"],
+      ...overrides,
+    });
+    expect(deriveLockVerificationFromProof(unique(), input).nodes[0]).toMatchObject({ support: "VERIFIED" });
+    for (const malformed of [
+      unique({ antecedentEvidenceUnitIds: ["answer-1:u1", "answer-3:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1", "answer-3:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1"], antecedentEvidenceUnitIds: ["answer-2:u2"] }),
+      unique({ evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: ["answer-2:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1"], antecedentEvidenceUnitIds: ["answer-2:u1"] }),
+      unique({ antecedentEvidenceUnitIds: [] }),
+    ]) {
+      expect(() => deriveLockVerificationFromProof(malformed, input)).toThrowError(expect.objectContaining({ category: "PROOF_RECORD_INVALID" }));
+    }
+  });
+
+  it("uses the same structural validator in adapter and application", async () => {
+    const input = inputFor([
+      { answerId: "answer-1", text: "First one. First two." },
+      { answerId: "answer-2", text: "Second one. Second two." },
+      { answerId: "answer-3", text: "Third one. Third two." },
+    ]);
+    const unique = (overrides: Partial<UnvalidatedNodeProof>) => proof({
+      referenceStatus: "UNIQUE_WITHIN_SUPPLIED_ANSWERS",
+      evidenceUnitIds: ["answer-2:u1"],
+      antecedentEvidenceUnitIds: ["answer-1:u1"],
+      ...overrides,
+    });
+    const malformedProofs = [
+      proof({ evidenceUnitIds: ["answer-1:u1", "answer-2:u1"] }),
+      proof({ antecedentEvidenceUnitIds: ["answer-2:u1"] }),
+      unique({ antecedentEvidenceUnitIds: ["answer-1:u1", "answer-3:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1", "answer-3:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1"], antecedentEvidenceUnitIds: ["answer-2:u2"] }),
+      unique({ evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: ["answer-2:u1"] }),
+      unique({ evidenceUnitIds: ["answer-2:u1"], antecedentEvidenceUnitIds: ["answer-2:u1"] }),
+      unique({ antecedentEvidenceUnitIds: [] }),
+    ];
+    for (const malformed of malformedProofs) {
+      expect(() => deriveLockVerificationFromProof(malformed, input)).toThrowError(expect.objectContaining({ category: "PROOF_RECORD_INVALID" }));
+      const error = await new OpenAILockVerifierV2Adapter(
+        new ScriptedTransport([malformed, malformed]),
+        "candidate-model",
+        () => 0,
+      ).extractProof(input).catch((caught) => caught) as LockVerifierV2ExecutionError;
+      expect(error).toBeInstanceOf(LockVerifierV2ExecutionError);
+      expect(error.attempts.map(({ failureCategory }) => failureCategory)).toEqual([
+        "PROOF_RECORD_INVALID",
+        "PROOF_RECORD_INVALID",
+      ]);
+    }
+  });
+
   it("keeps v2 provider output proof-only with no support escape hatch", () => {
     expect(providerLockProofSchema.safeParse(proof()).success).toBe(true);
     expect(providerLockProofSchema.safeParse({ nodes: [{ ...proof().nodes[0], support: "VERIFIED" }] }).success).toBe(false);

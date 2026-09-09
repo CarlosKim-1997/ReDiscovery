@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import {
-  LOCK_VERIFIER_V2_FAILURE_CATEGORIES,
+  LockProofV2ValidationError,
   LockVerifierV2ExecutionError,
   PROOF_ENDORSEMENT_STATUSES,
   PROOF_REFERENCE_STATUSES,
@@ -11,6 +11,7 @@ import {
   type LockVerifierV2FailureCategory,
   type LockVerifierV2Input,
   type LockVerifierV2Port,
+  validateLockProofV2Structure,
   type UnvalidatedLockProof,
 } from "@/ports/lock-verifier-v2";
 import {
@@ -119,7 +120,7 @@ export class OpenAILockVerifierV2Adapter implements LockVerifierV2Port {
       try {
         const response = await this.transport.extract(request);
         const parsed = providerLockProofSchema.parse(response.output);
-        validateProviderProof(parsed, input);
+        validateLockProofV2Structure(parsed, input);
         const proof: UnvalidatedLockProof = { nodes: parsed.nodes };
         attempts.push({
           attempt,
@@ -153,45 +154,8 @@ export class OpenAILockVerifierV2Adapter implements LockVerifierV2Port {
   }
 }
 
-class LockVerifierV2SchemaError extends Error {
-  constructor(readonly category: LockVerifierV2FailureCategory) {
-    super(category);
-  }
-}
-
 function classifyFailure(error: unknown): LockVerifierV2FailureCategory | undefined {
-  if (error instanceof LockVerifierV2SchemaError) return error.category;
+  if (error instanceof LockProofV2ValidationError) return error.category;
   if (error instanceof z.ZodError || (error instanceof Error && error.message === "SCHEMA_INVALID")) return "STRUCTURED_OUTPUT_INVALID";
   return undefined;
-}
-
-function validateProviderProof(
-  proof: z.infer<typeof providerLockProofSchema>,
-  input: LockVerifierV2Input,
-) {
-  const expected = input.requiredNodes.map(({ nodeId }) => nodeId);
-  const actual = proof.nodes.map(({ nodeId }) => nodeId);
-  if (actual.length !== expected.length || new Set(actual).size !== actual.length) fail("NODE_SET_INVALID");
-  if (actual.some((id) => !expected.includes(id)) || expected.some((id) => !actual.includes(id))) fail("NODE_SET_INVALID");
-  const units = new Map(input.evidenceUnits.map((unit) => [unit.unitId, unit]));
-
-  for (const node of proof.nodes) {
-    if (new Set(node.evidenceUnitIds).size !== node.evidenceUnitIds.length) fail("PROOF_RECORD_INVALID");
-    if (new Set(node.antecedentEvidenceUnitIds).size !== node.antecedentEvidenceUnitIds.length) fail("PROOF_RECORD_INVALID");
-    if ([...node.evidenceUnitIds, ...node.antecedentEvidenceUnitIds].some((id) => !units.has(id))) fail("EVIDENCE_UNIT_INVALID");
-    if (node.semanticMatch === "COMPLETE_NODE_MATCH" && node.evidenceUnitIds.length === 0) fail("PROOF_RECORD_INVALID");
-    if (node.referenceStatus === "UNIQUE_WITHIN_SUPPLIED_ANSWERS") {
-      if (node.evidenceUnitIds.length === 0 || node.antecedentEvidenceUnitIds.length === 0) fail("PROOF_RECORD_INVALID");
-      if (node.evidenceUnitIds.some((id) => node.antecedentEvidenceUnitIds.includes(id))) fail("PROOF_RECORD_INVALID");
-      const referringAnswers = new Set(node.evidenceUnitIds.map((id) => units.get(id)!.answerId));
-      if (!node.antecedentEvidenceUnitIds.some((id) => !referringAnswers.has(units.get(id)!.answerId))) fail("PROOF_RECORD_INVALID");
-    } else if (node.antecedentEvidenceUnitIds.length > 0) {
-      fail("PROOF_RECORD_INVALID");
-    }
-  }
-}
-
-function fail(category: LockVerifierV2FailureCategory): never {
-  if (!LOCK_VERIFIER_V2_FAILURE_CATEGORIES.includes(category)) throw new Error("Unsupported failure category");
-  throw new LockVerifierV2SchemaError(category);
 }
