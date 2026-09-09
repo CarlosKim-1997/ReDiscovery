@@ -1,0 +1,27 @@
+{
+  "dataset_version": "lock-verifier-dev-v3",
+  "prompt_version": "lock-verify-v3",
+  "proof_contract_version": "lock-proof-v3",
+  "evaluator_version": "lock-verifier-eval-v3",
+  "content_slug": "conway-law",
+  "content_version": 4,
+  "base_suite": "../v2",
+  "targeted_cases_file": "targeted-cases.json",
+  "expected_inherited_case_count": 164,
+  "expected_targeted_case_count": 6,
+  "expected_total_case_count": 170,
+  "hard_case_cap": 170,
+  "inherited_v2_case_identity_sha256": "40f618bb942354802fbcd30d63444bfd396862fc3a1f59fcef0fdcb9347bbc57",
+  "candidate_model": "gpt-5.6-luna",
+  "pricing_usd_per_million": {"input":0.2,"output":1.2,"checked_at":"2026-09-09"},
+  "targeted_category_counts": {"reference":3,"component-boundary":2,"distribution":1},
+  "required_regression_case_ids": [
+    "messy-spacing-full-04", "messy-rejected-quote-02", "messy-rejected-quote-04",
+    "v2-reference-unresolved-01", "v2-reference-ambiguous-01", "v2-reference-self-contained-01", "v2-reference-cross-answer-unique-01", "v2-reference-cross-answer-unresolved-01", "v2-reference-prior-shaped-01",
+    "v2-relation-relatedness-01", "v2-relation-influence-01", "v2-relation-causation-01", "v2-relation-noncanonical-complete-01", "v2-relation-short-complete-01", "v2-relation-hedged-complete-01",
+    "v2-endorsement-rejected-01", "v2-endorsement-abandoned-01", "v2-endorsement-contradiction-01", "v2-endorsement-self-correction-01", "v2-endorsement-quote-then-complete-01", "v2-endorsement-cross-answer-correction-01",
+    "v2-format-spacing-01", "v2-format-unicode-01", "v2-format-no-punctuation-01", "v2-format-long-single-01", "v2-format-multiple-units-01", "v2-format-cross-answer-01",
+    "v3-reference-same-answer-unique-01", "v3-reference-same-answer-ambiguous-01", "v3-reference-omitted-antecedent-01", "v3-component-generic-influence-01", "v3-component-noncanonical-mapping-01", "v3-component-distributed-evidence-01"
+  ],
+  "notes": "Development-only v3 suite: all 164 v2 surfaces and node-level expectations unchanged plus exactly six human-approved component-proof regressions. It is not a holdout."
+}

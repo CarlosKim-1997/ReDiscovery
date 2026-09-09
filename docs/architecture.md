@@ -148,3 +148,13 @@ or Lock field. Cross-answer resolution is admissible only with a distinct,
 supplied-answer antecedent unit. OpenAI request construction remains isolated in
 `src/adapters/openai-lock-verifier-v2`; the v2 port can be implemented by another
 provider. Like v1, v2 is offline evaluator-only and has no runtime wiring.
+
+M3-B3 v3 remains a separate evaluator-only path and keeps the canonical four
+content layers. Approved content schema version 2 adds generic Lock proof
+components under server-only `SERVER_POLICY.lock_verifier`; schema version 1
+content remains unchanged. The provider returns component-local proof facts, and
+provider-neutral application code validates exact component coverage and derives
+node support only when every required component passes. Same-answer and
+cross-answer antecedents use one canonical supplied-evidence order. Redacted
+rejected-proof diagnostics retain only enum values and unit IDs. V3 is not wired
+into runtime composition, persistence, Daily behavior, or public DTOs.

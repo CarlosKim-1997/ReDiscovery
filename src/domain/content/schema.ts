@@ -6,10 +6,29 @@ const guidance = z.object({
   CORRECTION: z.string().min(1), RESCUE: z.string().min(1),
 }).strict();
 
-export const approvedContentSchema = z.object({
+const lockVerifierPolicy = z.object({
+  contract_version: z.literal("proof-components-v1"),
+  nodes: z.array(z.object({
+    node_id: nodeId,
+    required_components: z.array(z.object({
+      id: nodeId,
+      description: z.string().trim().min(1),
+    }).strict()).min(1),
+  }).strict()).min(1),
+}).strict();
+
+const serverPolicyBase = {
+  max_turns: z.number().int().min(1).max(10),
+  required_nodes: z.array(nodeId).min(1),
+  blocking_nodes: z.array(nodeId),
+  lock_threshold: z.number().int().positive(),
+  guidance,
+  recognition_aliases: z.array(z.string().min(1)).optional(),
+};
+
+const commonContent = {
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   version: z.number().int().positive(),
-  schema_version: z.number().int().positive(),
   status: z.literal("APPROVED"),
   approved_at: z.iso.datetime(),
   PUBLIC_PLAY: z.object({
@@ -21,18 +40,29 @@ export const approvedContentSchema = z.object({
     nodes: z.array(z.object({ id: nodeId, description: z.string().min(1) }).strict()).min(1),
     misconceptions: z.array(z.string().min(1)),
   }).strict(),
-  SERVER_POLICY: z.object({
-    max_turns: z.number().int().min(1).max(10),
-    required_nodes: z.array(nodeId).min(1), blocking_nodes: z.array(nodeId),
-    lock_threshold: z.number().int().positive(), guidance,
-    recognition_aliases: z.array(z.string().min(1)).optional(),
-  }).strict(),
   REVEAL_CONTENT: z.object({
     theory: z.string().min(1), person: z.string().min(1), year: z.string().min(1),
     explanation: z.string().min(1), connection: z.string().min(1),
     provenance: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   }).strict(),
-}).strict().superRefine((content, context) => {
+};
+
+const historicalContentSchema = z.object({
+  ...commonContent,
+  schema_version: z.literal(1),
+  SERVER_POLICY: z.object(serverPolicyBase).strict(),
+}).strict();
+
+const componentProofContentSchema = z.object({
+  ...commonContent,
+  schema_version: z.literal(2),
+  SERVER_POLICY: z.object({ ...serverPolicyBase, lock_verifier: lockVerifierPolicy }).strict(),
+}).strict();
+
+export const approvedContentSchema = z.union([
+  historicalContentSchema,
+  componentProofContentSchema,
+]).superRefine((content, context) => {
   const ids = content.JUDGE_RUBRIC.nodes.map(({ id }) => id);
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC", "nodes"], message: "Duplicate node IDs" });
   for (const [field, values] of [["required_nodes", content.SERVER_POLICY.required_nodes], ["blocking_nodes", content.SERVER_POLICY.blocking_nodes]] as const) {
@@ -40,6 +70,32 @@ export const approvedContentSchema = z.object({
   }
   if (content.SERVER_POLICY.lock_threshold > content.SERVER_POLICY.required_nodes.length) {
     context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_threshold"], message: "Threshold exceeds required node count" });
+  }
+  if (content.schema_version === 2) {
+    const verifierNodes = content.SERVER_POLICY.lock_verifier.nodes;
+    const verifierNodeIds = verifierNodes.map(({ node_id }) => node_id);
+    if (new Set(verifierNodeIds).size !== verifierNodeIds.length) {
+      context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_verifier", "nodes"], message: "Duplicate verifier node IDs" });
+    }
+    for (const verifierNode of verifierNodes) {
+      if (!ids.includes(verifierNode.node_id)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_verifier", "nodes"], message: `Unknown verifier node: ${verifierNode.node_id}` });
+      }
+      const componentIds = verifierNode.required_components.map(({ id }) => id);
+      if (new Set(componentIds).size !== componentIds.length) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_verifier", "nodes"], message: `Duplicate verifier component IDs for ${verifierNode.node_id}` });
+      }
+    }
+    for (const requiredNode of content.SERVER_POLICY.required_nodes) {
+      if (!verifierNodeIds.includes(requiredNode)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_verifier", "nodes"], message: `Missing verifier coverage: ${requiredNode}` });
+      }
+    }
+    for (const verifierNode of verifierNodeIds) {
+      if (!content.SERVER_POLICY.required_nodes.includes(verifierNode)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_verifier", "nodes"], message: `Verifier coverage is not required: ${verifierNode}` });
+      }
+    }
   }
   const forbidden = [content.REVEAL_CONTENT.theory, content.REVEAL_CONTENT.person, content.REVEAL_CONTENT.year, ...(content.SERVER_POLICY.recognition_aliases ?? [])];
   for (const [layer, value] of [["PUBLIC_PLAY", content.PUBLIC_PLAY], ["JUDGE_RUBRIC", content.JUDGE_RUBRIC]] as const) {

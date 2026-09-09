@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "provenance": "human-approved-component-proof-development-regressions",
+  "cases": [
+    {
+      "id": "v3-reference-same-answer-unique-01",
+      "category": "reference",
+      "answers": [{"answerId":"answer-1","text":"매일 상의하는 구성원들이 작업 단위별 무리를 이룹니다. 그 무리들 사이에서는 정보 교환이 드물고, 완성품도 같은 작업 단위의 경계로 분할됩니다."}],
+      "expected_supports": {"TEAM_BOUNDARIES":"VERIFIED","COMMUNICATION_FRICTION":"VERIFIED","SYSTEM_RESEMBLANCE":"VERIFIED"},
+      "rationale": "A later unit has one explicit earlier antecedent in the same supplied answer and states a complete structural mapping."
+    },
+    {
+      "id": "v3-reference-same-answer-ambiguous-01",
+      "category": "reference",
+      "answers": [{"answerId":"answer-1","text":"연구 담당과 운영 담당이 따로 모이고, 국내 담당과 해외 담당도 별도로 모입니다. 그 구분 탓에 연락이 뜸해지고 산출물도 같은 구획을 갖습니다."}],
+      "expected_supports": {"TEAM_BOUNDARIES":"VERIFIED","COMMUNICATION_FRICTION":"INSUFFICIENT","SYSTEM_RESEMBLANCE":"INSUFFICIENT"},
+      "rationale": "Two explicit earlier boundaries make the later same-answer reference ambiguous."
+    },
+    {
+      "id": "v3-reference-omitted-antecedent-01",
+      "category": "reference",
+      "answers": [{"answerId":"answer-1","text":"그 배열 때문에 연락 방식도 달라지고 제작물의 구획도 똑같아집니다."}],
+      "expected_supports": {"TEAM_BOUNDARIES":"INSUFFICIENT","COMMUNICATION_FRICTION":"INSUFFICIENT","SYSTEM_RESEMBLANCE":"INSUFFICIENT"},
+      "rationale": "The proposition cannot import an absent antecedent even though later effects are asserted."
+    },
+    {
+      "id": "v3-component-generic-influence-01",
+      "category": "component-boundary",
+      "answers": [{"answerId":"answer-1","text":"작업자들은 연락이 원활한 소그룹별로 갈리고 다른 소그룹과는 협의가 어렵습니다. 결과물에도 여러 구성 구획이 있으며 이런 업무 환경이 결과물에 큰 영향을 줍니다."}],
+      "expected_supports": {"TEAM_BOUNDARIES":"VERIFIED","COMMUNICATION_FRICTION":"VERIFIED","SYSTEM_RESEMBLANCE":"INSUFFICIENT"},
+      "rationale": "Source and output structures are present, but generic influence does not prove that their partitions correspond."
+    },
+    {
+      "id": "v3-component-noncanonical-mapping-01",
+      "category": "component-boundary",
+      "answers": [{"answerId":"answer-1","text":"서로 바로 물어볼 수 있는 사람들끼리 판단권이 모입니다. 그렇게 생긴 사람 쪽의 칸막이가 그들이 만든 서비스의 칸막이 모양으로 다시 나타납니다."}],
+      "expected_supports": {"TEAM_BOUNDARIES":"VERIFIED","COMMUNICATION_FRICTION":"VERIFIED","SYSTEM_RESEMBLANCE":"VERIFIED"},
+      "rationale": "A complete source-to-output structural correspondence is expressed without canonical theory, team, or module vocabulary."
+    },
+    {
+      "id": "v3-component-distributed-evidence-01",
+      "category": "distribution",
+      "answers": [
+        {"answerId":"answer-1","text":"현장 인력은 자주 연락할 수 있는 무리별로 나뉘며 무리 밖 연락은 오래 걸립니다."},
+        {"answerId":"answer-2","text":"각 무리가 만든 장치에는 별도의 조립 구획이 생깁니다."},
+        {"answerId":"answer-3","text":"그 조립 구획의 경계는 앞서 말한 연락 무리의 경계와 하나씩 맞물립니다."}
+      ],
+      "expected_supports": {"TEAM_BOUNDARIES":"VERIFIED","COMMUNICATION_FRICTION":"VERIFIED","SYSTEM_RESEMBLANCE":"VERIFIED"},
+      "rationale": "Required components are independently supported across supplied answers and joined by an explicit final mapping."
+    }
+  ]
+}

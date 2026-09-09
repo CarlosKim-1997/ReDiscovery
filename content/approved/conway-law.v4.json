@@ -1,0 +1,99 @@
+{
+  "slug": "conway-law",
+  "version": 4,
+  "schema_version": 2,
+  "status": "APPROVED",
+  "approved_at": "2026-09-09T00:00:00.000Z",
+  "PUBLIC_PLAY": {
+    "label": "오늘의 사고 문제",
+    "estimated_minutes": 3,
+    "scenario": "같은 회사가 두 개의 소프트웨어를 만들었습니다. 한 제품은 기능별 팀이 서로 거의 따로 일했고, 결과물도 기능 사이의 연결이 약했습니다. 다른 제품은 여러 역할이 한 팀에서 자주 이야기했고, 결과물의 기능도 서로 촘촘히 연결되었습니다. 이런 차이는 프로젝트가 바뀌어도 반복되었습니다.",
+    "question": "왜 조직이 일하는 방식과 결과물의 구조가 자꾸 비슷한 모양을 띠게 될까요?"
+  },
+  "JUDGE_RUBRIC": {
+    "discriminator": "organizational-communication-structure-v3",
+    "nodes": [
+      {
+        "id": "TEAM_BOUNDARIES",
+        "description": "DISCOVERED requires a meaningful grouping or boundary among actors. A group defined by who can communicate or communicates frequently counts even without the words team or organization. Merely naming teams, an organization, or undivided people is PARTIAL at most."
+      },
+      {
+        "id": "COMMUNICATION_FRICTION",
+        "description": "DISCOVERED requires an explicit or semantically entailed difference in who can communicate, communication frequency, ease or difficulty, cost, reach or access, or communication occurring within one group rather than across another. A communication-defined grouping can complete this node without an explicit outside comparison or the words team or organization. Mere words such as communication, conversation, or collaboration are PARTIAL."
+      },
+      {
+        "id": "DECISION_CLUSTERING",
+        "description": "DISCOVERED requires actual design, coordination, judgment, or decision partitioning or local determination within communication groups or boundaries. Merely performing work or building functions together, or merely mentioning design or decisions, is PARTIAL."
+      },
+      {
+        "id": "SYSTEM_RESEMBLANCE",
+        "description": "DISCOVERED requires the product, system, or output structure to be downstream of, produced by, follow, reflect, or otherwise correspond as a consequence of organizational, communication, or locally clustered design boundaries. A full causal chain is unnecessary within this node, but bare similarity, correlation, or generic influence is PARTIAL. CONTRADICTED applies to an endorsed denial of the relationship or to the opposite causal direction asserted as its replacement; mentioning reverse causality only to reject it is not CONTRADICTED."
+      }
+    ],
+    "misconceptions": [
+      "기술만 결과를 결정하고 조직이나 소통은 무관하다는 주장",
+      "시스템 구조가 먼저 조직과 소통 구조를 결정한다는 반대 인과를 대체 설명으로 채택하는 주장"
+    ]
+  },
+  "SERVER_POLICY": {
+    "max_turns": 2,
+    "required_nodes": ["TEAM_BOUNDARIES", "COMMUNICATION_FRICTION", "SYSTEM_RESEMBLANCE"],
+    "blocking_nodes": ["SYSTEM_RESEMBLANCE"],
+    "lock_threshold": 3,
+    "guidance": {
+      "REFLECT": "이미 짚은 소통의 차이를 한 걸음 더 밀어보세요. 그 차이가 설계 결정을 어디에 모이게 할까요?",
+      "NUDGE": "사람들이 누구와 자주 이야기할 수 있는지 살펴보세요. 그 소통 경계가 설계에 어떤 흔적을 남길까요?",
+      "CORRECTION": "기술 선택만으로는 반복되는 경계의 모양을 설명하기 어렵습니다. 팀 사이의 소통 비용도 함께 생각해보세요.",
+      "RESCUE": "팀 안의 소통은 쉽고 팀 사이의 소통은 어렵습니다. 그래서 설계 결정도 팀 경계 안에서 모이고, 결과물의 구조가 조직 구조를 닮을 수 있습니다."
+    },
+    "recognition_aliases": ["Conway's Law", "Conway", "콘웨이의 법칙"],
+    "lock_verifier": {
+      "contract_version": "proof-components-v1",
+      "nodes": [
+        {
+          "node_id": "TEAM_BOUNDARIES",
+          "required_components": [
+            {
+              "id": "ACTOR_GROUPING",
+              "description": "A meaningful grouping or boundary among actors is explicitly stated or uniquely resolvable from supplied evidence. Merely naming an organization or team without an actual grouping or boundary is insufficient."
+            }
+          ]
+        },
+        {
+          "node_id": "COMMUNICATION_FRICTION",
+          "required_components": [
+            {
+              "id": "COMMUNICATION_DIFFERENCE",
+              "description": "An explicit communication difference is stated or uniquely resolvable from supplied evidence: who can communicate, frequency, ease or difficulty, cost, reach or access, communication within one group rather than across another, or a communication-defined grouping. A bare mention of communication, conversation, or collaboration is insufficient, and a deictic phrase cannot import an antecedent from omitted context."
+            }
+          ]
+        },
+        {
+          "node_id": "SYSTEM_RESEMBLANCE",
+          "required_components": [
+            {
+              "id": "SOURCE_BOUNDARY",
+              "description": "An organizational, communication, or locally clustered design grouping or boundary relevant to the structural claim is explicitly stated or uniquely resolvable from supplied evidence."
+            },
+            {
+              "id": "OUTPUT_STRUCTURE",
+              "description": "A product, system, or output structural grouping, boundary, partition, or corresponding structure is explicit. Merely naming a product or output, or saying that something affects it, is insufficient."
+            },
+            {
+              "id": "STRUCTURAL_CORRESPONDENCE",
+              "description": "The supplied evidence explicitly states that the output structure follows, reflects, reproduces, corresponds to, or has the same or similar partition or boundary structure as the relevant source-side boundary. Generic influence, causation, relatedness, continuation, or saying one thing leads to another without structural mapping is insufficient. Exact vocabulary is not required."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "REVEAL_CONTENT": {
+    "theory": "Conway's Law",
+    "person": "Melvin Conway",
+    "year": "1968",
+    "explanation": "조직이 만드는 시스템의 구조는 그 조직의 의사소통 구조를 닮는 경향이 있습니다.",
+    "connection": "이는 소통의 경계가 설계 결정의 경계가 되고, 결국 시스템 구조가 조직 구조를 닮는다는 통찰과 맞닿아 있습니다.",
+    "provenance": {"kind": "approved-reference-fixture", "verified": true}
+  }
+}

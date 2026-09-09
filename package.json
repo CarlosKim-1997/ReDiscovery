@@ -23,6 +23,7 @@
     "eval:judge": "node tooling/check-runtime.mjs && vitest run --config vitest.eval.config.mts",
     "eval:lock-verifier": "node tooling/check-runtime.mjs && vitest run --config vitest.lock-verifier-eval.config.mts",
     "eval:lock-verifier:v2": "node tooling/check-runtime.mjs && vitest run --config vitest.lock-verifier-v2-eval.config.mts",
+    "eval:lock-verifier:v3": "node tooling/check-runtime.mjs && vitest run --config vitest.lock-verifier-v3-eval.config.mts",
     "lint": "node tooling/check-runtime.mjs && eslint . --max-warnings=0",
     "typecheck": "node tooling/check-runtime.mjs && next typegen && tsc --noEmit"
   },

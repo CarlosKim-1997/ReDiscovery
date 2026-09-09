@@ -6,6 +6,7 @@ playwright-report/
 test-results/
 artifacts/eval/judge/
 artifacts/eval/lock-verifier/
+artifacts/eval/lock-verifier-v*/
 .eval-tmp/
 *.tsbuildinfo
 next-env.d.ts
