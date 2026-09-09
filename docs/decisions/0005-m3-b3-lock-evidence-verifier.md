@@ -42,12 +42,20 @@ false approvals/rejections, retries, failures, latency, token/cost totals, and o
 redacted failure IDs/categories. It refuses reports containing raw answers,
 evidence, prompts, or provider payloads.
 
+Before any Lock Verifier provider call, the credential-free Luna development
+acceptance contract was frozen as gitignored local artifact
+`m3-b3-luna-acceptance-contract-fa928172.json`, SHA-256
+`44d8f6ee5cd435fb8d1945f747598e75c02953207c7845ec300f82a17f409076`.
+It binds the exact 140-case identities and expected distributions, requires zero
+false approvals, and authorizes at most one full Luna suite. It contains no
+provider result and does not consume that authorization.
+
 ## Operations and deferred work
 
 `pnpm eval:lock-verifier` requires explicit local `OPENAI_API_KEY` and
-`ADJUDICATION_MODEL`. The first future run is Luna. Terra is not run unless Luna
-fails the stated acceptance gate. The command never runs in normal CI and failure
-does not modify gameplay or unlock a fallback path.
+`ADJUDICATION_MODEL`. The first future run is Luna. No automatic second Luna or
+Terra run is authorized. The command never runs in normal CI and failure does not
+modify gameplay or unlock a fallback path.
 
 The intended later no-fail behavior is documented but not implemented: a semantic
 self-discovery Lock candidate would require verification; rejection would continue
