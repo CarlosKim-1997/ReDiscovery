@@ -18,7 +18,7 @@ import { COMPARISON_STATUSES, type ComparisonStatus } from "@/domain/reveal/voca
 // Independent contract fixture: do not derive expected strings from production code.
 const canonical = {
   AttemptType: ["OFFICIAL", "REPLAY", "PRACTICE"],
-  PlayStatus: ["CREATED", "THINKING", "EVALUATING", "LOCKABLE", "LOCKED", "REVEALED", "ERROR_RECOVERABLE", "ABUSE_BLOCKED"],
+  PlayStatus: ["CREATED", "THINKING", "EVALUATING", "LOCKABLE", "SYNTHESIZING", "REVEAL_READY", "LOCKED", "REVEALED", "ERROR_RECOVERABLE", "ABUSE_BLOCKED"],
   PlayStage: ["BLIND", "REFLECT", "NUDGE", "CORRECTION", "RESCUE"],
   NodeStatus: ["DISCOVERED", "PARTIAL", "ABSENT", "CONTRADICTED"],
   AnswerType: ["REASONING", "OFF_TOPIC", "ASKING_FOR_ANSWER", "META", "EMPTY"],

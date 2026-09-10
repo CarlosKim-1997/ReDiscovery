@@ -30,7 +30,7 @@ export async function answer(deps:DailyGameDeps,deviceId:string,id:string,text:s
     try { verdict=validateJudgeVerdict(execution.verdict,c.judgeRubric,text); }
     catch (error) { attempts=markLastSchemaFailure(attempts,error instanceof JudgeVerdictValidationError?error.category:"STRUCTURED_OUTPUT_INVALID");throw new JudgeExecutionError(attempts); }
     await recordRuns(deps,s,thought.id,attempts);runsRecorded=true;
-    const result=applyJudgeVerdict(evaluating,verdict,c.serverPolicy);const next={...result.session,stateVersion:evaluating.stateVersion+1};
+    const result=applyJudgeVerdict(evaluating,verdict,c.serverPolicy);const next={...result.session,...(result.session.status==="SYNTHESIZING"?{synthesisEnteredAt:deps.clock.now()}:{}),stateVersion:evaluating.stateVersion+1};
     if(!await deps.store.completeAnswerEvaluation(evaluating.stateVersion,next))throw new Error("STALE_STATE_VERSION");
     return{outcome:result.outcome,session:toPublicSessionView(next,c.serverPolicy)};
   } catch(error) {
@@ -41,7 +41,7 @@ export async function answer(deps:DailyGameDeps,deviceId:string,id:string,text:s
     throw new JudgeExecutionError(failedAttempts);
   }
 }
-export async function recover(deps:DailyGameDeps,deviceId:string,id:string){return transition(deps,deviceId,id,(s,p)=>applyCorrectiveRescue(s,p));}
+export async function recover(deps:DailyGameDeps,deviceId:string,id:string){return transition(deps,deviceId,id,(s,p)=>{const recovered=applyCorrectiveRescue(s,p);return recovered.status==="SYNTHESIZING"?{...recovered,synthesisEnteredAt:deps.clock.now()}:recovered;});}
 export async function lock(deps:DailyGameDeps,deviceId:string,id:string){return transition(deps,deviceId,id,(s,p)=>lockPlaySession(s,p));}
 export async function reveal(deps:DailyGameDeps,deviceId:string,id:string){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;if((s.status!=="LOCKED"&&s.status!=="REVEALED")||!s.lockEvidence)throw new Error("REVEAL_NOT_ALLOWED");const c=await requiredContent(deps,s.contentVersionId);const representativeThought=resolveEvidence(s,s.lockEvidence);return{...c.revealContent,representativeThought,substantialGuidanceUsed:s.guidance.some(g=>g.stage==="RESCUE"||g.stage==="CORRECTION"),connection:`당신은 “${representativeThought}”라고 보았습니다. ${c.revealContent.connection}`};}
 export async function finishReveal(deps:DailyGameDeps,deviceId:string,id:string){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const completed=completeReveal(s);const next={...completed,stateVersion:s.status==="REVEALED"?s.stateVersion:s.stateVersion+1};if(s.status!=="REVEALED"&&!await deps.store.completeReveal(s.stateVersion,next))throw new Error("STALE_STATE_VERSION");return toPublicSessionView(next,c.serverPolicy);}

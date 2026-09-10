@@ -217,5 +217,39 @@ function fail(
 }
 
 export interface FinalSynthesisVerifierPort {
-  extractProof(input: FinalSynthesisVerifierInput): Promise<UnvalidatedFinalSynthesisProof>;
+  extractProof(input: FinalSynthesisVerifierInput): Promise<FinalSynthesisExecution>;
+}
+
+export const FINAL_SYNTHESIS_EXECUTION_FAILURE_CATEGORIES = [
+  "PROVIDER_UNAVAILABLE",
+  "STRUCTURED_OUTPUT_INVALID",
+] as const;
+export type FinalSynthesisExecutionFailureCategory = (typeof FINAL_SYNTHESIS_EXECUTION_FAILURE_CATEGORIES)[number];
+
+export interface FinalSynthesisVerifierAttempt {
+  readonly attempt: number;
+  readonly provider: string;
+  readonly model: string;
+  readonly promptVersion: string;
+  readonly schemaValid: boolean;
+  readonly resultStatus: "SUCCEEDED" | "PROVIDER_ERROR" | "SCHEMA_ERROR";
+  readonly failureCategory?: FinalSynthesisExecutionFailureCategory | FinalSynthesisProofFailureCategory;
+  readonly inputTokens?: number;
+  readonly outputTokens?: number;
+  readonly totalTokens?: number;
+  readonly estimatedCost?: string;
+  readonly latencyMs: number;
+  readonly providerRequestId?: string;
+}
+
+export interface FinalSynthesisExecution {
+  readonly proof: UnvalidatedFinalSynthesisProof;
+  readonly attempts: readonly FinalSynthesisVerifierAttempt[];
+}
+
+export class FinalSynthesisExecutionError extends Error {
+  readonly code = "FINAL_SYNTHESIS_VERIFIER_UNAVAILABLE";
+  constructor(readonly attempts: readonly FinalSynthesisVerifierAttempt[]) {
+    super("FINAL_SYNTHESIS_VERIFIER_UNAVAILABLE");
+  }
 }

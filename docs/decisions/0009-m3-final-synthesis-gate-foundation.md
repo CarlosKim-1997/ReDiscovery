@@ -1,6 +1,6 @@
 # 0009 — M3 Lock Evidence Acquisition Redesign: Final Synthesis Gate
 
-**Status:** Provider-free foundation implemented; runtime and evaluation design not started.
+**Status:** Provider-free foundation accepted. Runtime-core work is recorded separately in decision 0010; API/UI and evaluation remain unimplemented.
 
 ## Context and decision
 
@@ -57,25 +57,23 @@ to future `LOCKED`; an insufficient result leads to future `REVEAL_READY`. Skip
 also leads to future `REVEAL_READY`. There is no third submission, post-synthesis
 LLM Rescue, or return to Thinking.
 
-The intended future vocabulary is `SYNTHESIS_READY`, `SYNTHESIS_EVALUATING`, and
-`REVEAL_READY`. Existing `LOCKABLE` remains untouched for current and historical
-runtime compatibility. New architecture will reserve `LOCKED` for successful
-synthesis verification. `COMPLETED_WITHOUT_LOCK` is not introduced: phase and
-outcome must not be conflated. Whether a revealed session achieved verified
-self-discovery remains an open persistence-design decision.
+The accepted runtime design subsequently narrowed the persistent vocabulary to
+`SYNTHESIZING` and `REVEAL_READY`. Evaluation state belongs to the synthesis
+attempt, not `PlayStatus`. Existing `LOCKABLE` remains for historical content.
+New architecture reserves `LOCKED` for successful synthesis verification, and
+does not introduce `COMPLETED_WITHOUT_LOCK`.
 
 ```text
 THINKING / existing RESCUE completion
         ↓
-SYNTHESIS_READY
-        ↓ submission
-SYNTHESIS_EVALUATING
+SYNTHESIZING
+        ↓ submission (attempt owns EVALUATING)
       ↙       ↘
    PASS       FAIL #1
     ↓           ↓
- LOCKED    SYNTHESIS_READY
+ LOCKED    SYNTHESIZING
                 ↓ second submission
-        SYNTHESIS_EVALUATING
+        [attempt: EVALUATING]
               ↙       ↘
            PASS       FAIL
             ↓           ↓
@@ -84,9 +82,7 @@ SYNTHESIS_EVALUATING
              → future REVEALED
 ```
 
-Skip from `SYNTHESIS_READY` also leads to `REVEAL_READY`. This diagram is a
-future contract only; the canonical runtime state machine and persistence schema
-do not yet contain these states or transitions.
+Skip from `SYNTHESIZING` also leads to `REVEAL_READY`.
 
 ## Self-contained contract
 

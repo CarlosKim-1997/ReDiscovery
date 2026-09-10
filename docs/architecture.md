@@ -171,5 +171,13 @@ descriptions, one user-authored synthesis, and exact synthesis-local evidence
 units. Provider-neutral application code validates `final-synthesis-proof-v1`
 and derives support without any prior answers, Judge state, Guidance, Reveal
 data, expected labels, or historical identity. This foundation has no adapter,
-provider prompt, runtime registration, persistence, API, UI, or state-machine
-change.
+provider prompt, or model identity.
+
+The provider-free Final Synthesis runtime core adds only persistent
+`SYNTHESIZING` and `REVEAL_READY` phases. A dedicated synthesis-attempt table owns
+submission count, evaluation state, leases, generation fencing, purgeable text,
+and redacted proof. The application orchestrates reservation, an out-of-transaction
+port call, and atomic completion/recovery. Legacy `lock_answer_id` remains valid;
+verified synthesis uses a separate same-session evidence reference, and
+`locked_at` is present only for actual verified evidence. API, client DTO, UI,
+production adapter, and v5 scheduling remain deferred.

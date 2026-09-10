@@ -6,7 +6,18 @@ import { isSemanticLockEligible, mergeSemanticNodeStatus } from "./semantic-stat
 
 export interface PolicyResult {
   readonly session: PlaySession;
-  readonly outcome: "GUIDED" | "LOCKABLE";
+  readonly outcome: "GUIDED" | "LOCKABLE" | "SYNTHESIZING";
+}
+
+function supportsFinalSynthesis(policy: ServerPolicy): boolean {
+  return "final_synthesis" in policy;
+}
+
+function synthesisEntry(session: PlaySession, reason: "DISCOVERY_READY" | "RESCUE_EXHAUSTED"): PolicyResult {
+  return {
+    session: { ...session, status: "SYNTHESIZING", synthesisEntryReason: reason },
+    outcome: "SYNTHESIZING",
+  };
 }
 
 export function beginEvaluation(session: PlaySession, thought: SubmittedThought): PlaySession {
@@ -77,6 +88,7 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   const discoveries = mergeDiscoveries(evaluating, verdict, thought);
 
   if (isSemanticLockEligible(discoveries, policy)) {
+    if (supportsFinalSynthesis(policy)) return synthesisEntry({ ...evaluating, discoveries }, "DISCOVERY_READY");
     return { session: { ...evaluating, discoveries, status: "LOCKABLE" }, outcome: "LOCKABLE" };
   }
 
@@ -87,6 +99,9 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
     : [...evaluating.guidance, guidance];
 
   if (stage === "RESCUE") {
+    if (supportsFinalSynthesis(policy)) {
+      return synthesisEntry({ ...evaluating, discoveries, guidance: guidanceEvents, stage }, "RESCUE_EXHAUSTED");
+    }
     return {
       session: { ...evaluating, discoveries, guidance: guidanceEvents, stage, status: "LOCKABLE" },
       outcome: "LOCKABLE",
@@ -104,7 +119,8 @@ export function applyCorrectiveRescue(session: PlaySession, policy: ServerPolicy
   const guidance = { stage: "RESCUE", key: "RESCUE", text: policy.guidance.RESCUE } as const;
   return {
     ...session,
-    status: "LOCKABLE",
+    status: supportsFinalSynthesis(policy) ? "SYNTHESIZING" : "LOCKABLE",
+    ...(supportsFinalSynthesis(policy) ? { synthesisEntryReason: "RESCUE_EXHAUSTED" as const } : {}),
     stage: "RESCUE",
     guidance: [...session.guidance, guidance],
   };
@@ -119,6 +135,7 @@ export function selectRepresentativeEvidence(session: PlaySession): EvidenceRef 
 }
 
 export function lockPlaySession(session: PlaySession, policy: ServerPolicy): PlaySession {
+  if (supportsFinalSynthesis(policy)) throw new PlayRuleError("FINAL_SYNTHESIS_REQUIRED");
   if (session.status !== "LOCKABLE") throw new PlayRuleError("INVALID_SESSION_STATE");
   if (hasUnresolvedBlockingContradiction(session, policy)) throw new PlayRuleError("INVALID_SESSION_STATE");
   return { ...session, status: "LOCKED", lockEvidence: selectRepresentativeEvidence(session) };

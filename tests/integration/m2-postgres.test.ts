@@ -1,4 +1,4 @@
-import { beforeEach,describe,expect,it } from "vitest";
+import { afterEach,beforeEach,describe,expect,it } from "vitest";
 import postgres from "postgres";
 import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres-primary-store";
 import { NodeIdentityAdapter } from "@/adapters/node-identity/node-identity";
@@ -21,7 +21,8 @@ class ScriptedProvider implements OpenAIJudgeTransport{readonly requests:OpenAIJ
 suite("M2 PostgreSQL authority",()=>{
   let store:PostgresPrimaryStore;const identity=new NodeIdentityAdapter();const judge=new FakeJudgeAdapter();
   const deps=(instant="2026-09-08T14:59:59.000Z")=>({store,identity,judge,clock:{now:()=>new Date(instant)}});
-  beforeEach(async()=>{const sql=postgres(url!);await sql`TRUNCATE ai_runs,daily_completions,guidance_events,node_discoveries,user_answers,play_sessions,anonymous_devices CASCADE`;await sql`DELETE FROM daily_schedule WHERE canonical_date>'2026-09-09'`;await sql.end();store=new PostgresPrimaryStore(url!);});
+  beforeEach(async()=>{const sql=postgres(url!);await sql`TRUNCATE ai_runs,daily_completions,guidance_events,node_discoveries,user_answers,play_sessions,anonymous_devices CASCADE`;await sql`DELETE FROM daily_schedule WHERE canonical_date>'2026-09-09'`;await sql`UPDATE daily_schedule d SET content_version_id=v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE d.canonical_date='2026-09-08' AND i.slug='conway-law' AND v.version=1`;await sql.end();store=new PostgresPrimaryStore(url!);});
+  afterEach(async()=>{await store.close();const sql=postgres(url!);await sql`TRUNCATE ai_runs,daily_completions,guidance_events,node_discoveries,user_answers,play_sessions,anonymous_devices CASCADE`;await sql`UPDATE daily_schedule d SET content_version_id=v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE d.canonical_date='2026-09-08' AND i.slug='conway-law' AND v.version=1`;await sql.end();});
 
   it("resolves the KST midnight boundary and returns no unscheduled date",async()=>{expect((await store.resolveDaily(new Date("2026-09-08T14:59:59Z")))?.canonicalDate).toBe("2026-09-08");expect((await store.resolveDaily(new Date("2026-09-08T15:00:00Z")))?.canonicalDate).toBe("2026-09-09");expect(await store.resolveDaily(new Date("2026-09-09T15:00:00Z"))).toBeUndefined();});
   it("stores only a hash and resumes the same device",async()=>{const token=identity.randomToken();const hash=identity.hashToken(token);const made=await store.createDevice(hash);expect((await store.findActiveDevice(hash))?.id).toBe(made.id);const sql=postgres(url!);const [row]=await sql<{token_hash:string}[]>`SELECT token_hash FROM anonymous_devices WHERE id=${made.id}`;await sql.end();expect(row?.token_hash).toBe(hash);expect(row?.token_hash).not.toBe(token);});
@@ -41,7 +42,7 @@ suite("M2 PostgreSQL authority",()=>{
   it("rejects cross-session evidence, mismatched completion Daily, and invalid session binding",async()=>{
     const deviceA=await store.createDevice(identity.hashToken(identity.randomToken()));const deviceB=await store.createDevice(identity.hashToken(identity.randomToken()));const a=await startOfficial(deps(),deviceA.id);const b=await startOfficial(deps(),deviceB.id);await answer(deps(),deviceA.id,a!.session.id,full);await answer(deps(),deviceB.id,b!.session.id,full);
     const sql=postgres(url!);const [answerA]=await sql<{id:string}[]>`SELECT id FROM user_answers WHERE session_id=${a!.session.id}`;
-    await expect(sql`UPDATE play_sessions SET lock_answer_id=${answerA!.id},lock_span_start=0,lock_span_end=1 WHERE id=${b!.session.id}`).rejects.toThrow(/play_sessions_lock_answer_ownership_fk/);
+    await expect(sql`UPDATE play_sessions SET lock_answer_id=${answerA!.id},lock_span_start=0,lock_span_end=1,locked_at=now() WHERE id=${b!.session.id}`).rejects.toThrow(/play_sessions_lock_answer_ownership_fk/);
     await expect(sql`UPDATE node_discoveries SET first_answer_id=${answerA!.id},evidence_span_start=0,evidence_span_end=1 WHERE session_id=${b!.session.id} AND node_id='TEAM_BOUNDARIES'`).rejects.toThrow(/node_discoveries_evidence_ownership_fk/);
     await expect(sql`UPDATE node_discoveries SET contradiction_answer_id=${answerA!.id},contradiction_span_start=0,contradiction_span_end=1 WHERE session_id=${b!.session.id} AND node_id='SYSTEM_RESEMBLANCE'`).rejects.toThrow(/node_discoveries_contradiction_ownership_fk/);
     const [tomorrow]=await sql<{id:string}[]>`SELECT id FROM daily_schedule WHERE canonical_date='2026-09-09'`;
@@ -49,5 +50,123 @@ suite("M2 PostgreSQL authority",()=>{
     const boundContent=(await store.getOwnedSession(a!.session.id,deviceA.id))!.contentVersionId;const testVersion=200000+Math.floor(Math.random()*100000000);const [otherVersion]=await sql<{id:string}[]>`INSERT INTO content_versions(content_item_id,version,schema_version,content_hash,status,public_play,judge_rubric,server_policy,reveal_content,approved_at) SELECT content_item_id,${testVersion},schema_version,${identity.hashToken(identity.randomToken())},status,public_play,judge_rubric,server_policy,reveal_content,approved_at FROM content_versions WHERE id=${boundContent} RETURNING id`;
     await expect(sql`INSERT INTO play_sessions(daily_id,content_version_id,anonymous_device_id,attempt_type,status,stage) VALUES(${a!.daily.id},${otherVersion!.id},${deviceA.id},'PRACTICE','THINKING','BLIND')`).rejects.toThrow(/play_sessions_daily_content_binding_fk/);
     await expect(sql`UPDATE play_sessions SET daily_id=${tomorrow!.id} WHERE id=${a!.session.id}`).rejects.toThrow(/binding is immutable/);await sql.end();
+  });
+  async function startSynthesisSession(){const sql=postgres(url!);await sql`UPDATE daily_schedule d SET content_version_id=v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE d.canonical_date='2026-09-08' AND i.slug='conway-law' AND v.version=5`;await sql.end();const device=await store.createDevice(identity.hashToken(identity.randomToken()));const started=await startOfficial(deps(),device.id);const current=await store.getOwnedSession(started!.session.id,device.id);const entered={...current!,status:"SYNTHESIZING" as const,synthesisEntryReason:"DISCOVERY_READY" as const,synthesisEnteredAt:new Date("2026-09-10T00:00:00Z"),stateVersion:current!.stateVersion+1};expect(await store.saveTransition(current!.stateVersion,entered)).toBe(true);return{device,session:(await store.getOwnedSession(entered.id,device.id))!};}
+  const reservation=(session:Awaited<ReturnType<typeof startSynthesisSession>>["session"],deviceId:string,overrides:Record<string,unknown>={},target=store)=>target.reserveFinalSynthesisSubmission({sessionId:session.id,deviceId,expectedStateVersion:session.stateVersion,attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("key"),submissionTextHash:identity.hashToken("text"),text:"😀".repeat(250),submittedAt:new Date("2026-09-10T00:01:00Z"),leaseDurationMs:1000,...overrides});
+  const redactedVerified={contractVersion:"final-synthesis-proof-v1",nodes:[{nodeId:"N",support:"VERIFIED",components:[{componentId:"C",satisfied:true}]}]};
+  const redactedInsufficient={contractVersion:"final-synthesis-proof-v1",nodes:[{nodeId:"N",support:"INSUFFICIENT",components:[{componentId:"C",satisfied:false}]}]};
+  const namedUrl=(name:string)=>{const candidate=new URL(url!);candidate.searchParams.set("application_name",name);return candidate.toString();};
+  async function waitForDatabaseLockBarrier(names:readonly string[]){
+    const observer=postgres(url!,{max:1});
+    try{
+      for(let poll=0;poll<500;poll+=1){
+        const rows=await observer<{application_name:string}[]>`SELECT application_name FROM pg_stat_activity WHERE application_name=ANY(${names}::text[]) AND wait_event_type='Lock'`;
+        if(new Set(rows.map(row=>row.application_name)).size===names.length)return;
+        await new Promise(resolve=>setTimeout(resolve,10));
+      }
+      throw new Error(`database lock barrier timed out: ${names.join(",")}`);
+    }finally{await observer.end();}
+  }
+  async function holdSessionRowLock(sessionId:string){
+    const blocker=postgres(url!,{max:1});let release!:()=>void;let acquired!:()=>void;let rejectAcquire!:(error:unknown)=>void;
+    const released=new Promise<void>(resolve=>{release=resolve;});const locked=new Promise<void>((resolve,reject)=>{acquired=resolve;rejectAcquire=reject;});
+    const transaction=blocker.begin(async tx=>{await tx`SELECT id FROM play_sessions WHERE id=${sessionId} FOR UPDATE`;acquired();await released;}).catch(error=>{rejectAcquire(error);throw error;});
+    await locked;
+    return async()=>{release();await transaction;await blocker.end();};
+  }
+
+  it("enforces JavaScript UTF-16 counts, submission idempotency, and concurrent reservation authority",async()=>{
+    const sql=postgres(url!);for(const text of ["ascii","한글","😀","😀😀","e\u0301","👨‍👩‍👧‍👦"]) {const [row]=await sql<{length:number}[]>`SELECT utf16_code_unit_length(${text}) length`;expect(row!.length,text).toBe(text.length);}await sql.end();
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id);expect(first.kind).toBe("RESERVED");if(first.kind!=="RESERVED")return;expect(first.attempt.charCount).toBe(500);expect(await store.skipFinalSynthesis({sessionId:session.id,deviceId:device.id,expectedStateVersion:first.session.stateVersion,skippedAt:new Date("2026-09-10T00:01:00.500Z")})).toBeUndefined();
+    expect((await reservation(session,device.id,{attemptId:identity.randomId()})).kind).toBe("IDEMPOTENT");expect((await reservation(session,device.id,{attemptId:identity.randomId(),submissionTextHash:identity.hashToken("different")})).kind).toBe("IDEMPOTENCY_CONFLICT");
+    const concurrent=await startSynthesisSession();const [raceA,raceB]=await Promise.all([reservation(concurrent.session,concurrent.device.id,{submissionKeyHash:identity.hashToken("race-a"),submissionTextHash:identity.hashToken("race-a"),text:"a"}),reservation(concurrent.session,concurrent.device.id,{submissionKeyHash:identity.hashToken("race-b"),submissionTextHash:identity.hashToken("race-b"),text:"b"})]);expect([raceA.kind,raceB.kind].filter(kind=>kind==="RESERVED")).toHaveLength(1);
+    const raw=postgres(url!);await expect(raw`INSERT INTO final_synthesis_attempts(id,session_id,attempt_number,submission_key_hash,submission_text_hash,text,char_count,submitted_at,evaluation_state,evaluation_generation,evaluation_started_at,evaluation_lease_expires_at,proof_contract_version,updated_at) VALUES(${identity.randomId()},${session.id},2,${identity.hashToken("501")},${identity.hashToken("501")},${"😀".repeat(250)+"a"},501,now(),'EVALUATING',1,now(),now()+interval '1 minute','final-synthesis-proof-v1',now())`).rejects.toThrow();await raw.end();
+  });
+
+  it("fences retry generations, enforces Lock evidence, purge safety, and unlocked Reveal timestamps",async()=>{
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:"first",submissionTextHash:identity.hashToken("first")});if(first.kind!=="RESERVED")throw new Error(first.kind);
+    const failed=await store.markFinalSynthesisEvaluationRecoverable({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,failedAt:new Date("2026-09-10T00:02:00Z"),failureCategory:"PROVIDER_UNAVAILABLE",runs:[]});expect(failed).toMatchObject({status:"SYNTHESIZING",turnCount:0});expect((await reservation(failed!,device.id,{attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("blocked"),submissionTextHash:identity.hashToken("blocked"),text:"blocked"})).kind).toBe("ACTIVE_EVALUATION");
+    const retry=await store.reserveFinalSynthesisRetry({sessionId:session.id,deviceId:device.id,expectedStateVersion:failed!.stateVersion,attemptId:first.attempt.id,expectedEvaluationGeneration:1,startedAt:new Date("2026-09-10T00:03:00Z"),leaseDurationMs:1000});expect(retry.kind).toBe("RESERVED");if(retry.kind!=="RESERVED")return;expect(retry.attempt.evaluationGeneration).toBe(2);
+    const redacted={contractVersion:"final-synthesis-proof-v1",nodes:[{nodeId:"N",support:"INSUFFICIENT",components:[{componentId:"C",satisfied:false}]}]};expect(await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redacted,eligible:false,evaluatedAt:new Date("2026-09-10T00:04:00Z"),runs:[]})).toBeUndefined();
+    const insufficient=await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:2,redactedResult:redacted,eligible:false,evaluatedAt:new Date("2026-09-10T00:04:00Z"),runs:[]});expect(insufficient).toMatchObject({status:"SYNTHESIZING",turnCount:0});
+    const second=await reservation(insufficient!,device.id,{attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("second"),submissionTextHash:identity.hashToken("second"),text:"second",submittedAt:new Date("2026-09-10T00:05:00Z")});if(second.kind!=="RESERVED")throw new Error(second.kind);const revealReady=await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:second.attempt.id,evaluationGeneration:1,redactedResult:redacted,eligible:false,evaluatedAt:new Date("2026-09-10T00:06:00Z"),runs:[]});expect(revealReady?.status).toBe("REVEAL_READY");expect((await reservation(revealReady!,device.id,{attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("third"),submissionTextHash:identity.hashToken("third"),text:"third"})).kind).toBe("INVALID_STATE");
+    const revealed={...revealReady!,status:"REVEALED" as const,revealCompleted:true,stateVersion:revealReady!.stateVersion+1};expect(await store.completeReveal(revealReady!.stateVersion,revealed)).toBe(true);const db=postgres(url!);const [row]=await db<{locked_at:Date|null;lock_answer_id:string|null;verified_synthesis_attempt_id:string|null}[]>`SELECT locked_at,lock_answer_id,verified_synthesis_attempt_id FROM play_sessions WHERE id=${session.id}`;expect(row).toEqual({locked_at:null,lock_answer_id:null,verified_synthesis_attempt_id:null});await expect(db`UPDATE play_sessions SET status='LOCKED',locked_at=now() WHERE id=${session.id}`).rejects.toThrow(/play_sessions_(locked_evidence|lock_timestamp_authority)_check/);await db.end();
+  });
+
+  it("accepts only VERIFIED same-session synthesis evidence and preserves it through raw purge and Reveal",async()=>{
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:"verified",submissionTextHash:identity.hashToken("verified")});if(first.kind!=="RESERVED")throw new Error(first.kind);const redacted={contractVersion:"final-synthesis-proof-v1",nodes:[{nodeId:"N",support:"VERIFIED",components:[{componentId:"C",satisfied:true}]}]};const locked=await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redacted,eligible:true,evaluatedAt:new Date("2026-09-10T00:02:00Z"),runs:[{id:identity.randomId(),sessionId:session.id,purpose:"FINAL_SYNTHESIS_VERIFY",contentVersionId:session.contentVersionId,synthesisAttemptId:first.attempt.id,evaluationGeneration:1,attempt:1,provider:"fixture",model:"fixture",promptVersion:"fixture-v1",schemaValid:true,resultStatus:"SUCCEEDED",latencyMs:1,createdAt:new Date("2026-09-10T00:02:00Z")} ]});expect(locked).toMatchObject({status:"LOCKED",verifiedSynthesisAttemptId:first.attempt.id,lockedAt:expect.any(Date)});
+    const db=postgres(url!);
+    await db`UPDATE final_synthesis_attempts SET text=NULL,purged_at=now() WHERE id=${first.attempt.id}`;
+    expect((await store.getOwnedSession(session.id,device.id))?.verifiedSynthesisAttemptId).toBe(first.attempt.id);
+    const revealed={...locked!,status:"REVEALED" as const,revealCompleted:true,stateVersion:locked!.stateVersion+1};expect(await store.completeReveal(locked!.stateVersion,revealed)).toBe(true);
+    const [row]=await db<{locked_at:Date|null;purpose:string;synthesis_attempt_id:string}[]>`SELECT p.locked_at,a.purpose,a.synthesis_attempt_id FROM play_sessions p JOIN ai_runs a ON a.session_id=p.id WHERE p.id=${session.id}`;expect(row).toMatchObject({locked_at:expect.any(Date),purpose:"FINAL_SYNTHESIS_VERIFY",synthesis_attempt_id:first.attempt.id});
+    const other=await startSynthesisSession();expect(other.session.id).not.toBe(session.id);
+    await expect(db.begin(async tx=>{await tx`UPDATE play_sessions SET verified_synthesis_attempt_id=${first.attempt.id},status='LOCKED',locked_at=now() WHERE id=${other.session.id}`;await tx`SET CONSTRAINTS ALL IMMEDIATE`;})).rejects.toThrow(/play_sessions_verified_synthesis_ownership_fk|verified synthesis lock evidence/);
+    const [insertedAnswer]=await db<{id:string}[]>`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${identity.randomId()},${session.id},1,'BLIND','x',1) RETURNING id`;expect(insertedAnswer).toBeDefined();
+    await expect(db`UPDATE play_sessions SET lock_answer_id=${insertedAnswer!.id},lock_span_start=0,lock_span_end=1 WHERE id=${session.id}`).rejects.toThrow(/play_sessions_lock_evidence_exclusive_check/);
+    await db.end();
+  });
+
+  it("serializes concurrent completion for the same synthesis attempt generation",async()=>{
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:"concurrent completion",submissionTextHash:identity.hashToken("concurrent completion")});if(first.kind!=="RESERVED")throw new Error(first.kind);
+    const winnerStore=new PostgresPrimaryStore(namedUrl("synthesis_same_generation_winner"));const loserStore=new PostgresPrimaryStore(namedUrl("synthesis_same_generation_loser"));const release=await holdSessionRowLock(session.id);
+    try{
+      const winner=winnerStore.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedVerified,eligible:true,evaluatedAt:new Date("2026-09-10T00:02:00Z"),runs:[{id:identity.randomId(),sessionId:session.id,purpose:"FINAL_SYNTHESIS_VERIFY",contentVersionId:session.contentVersionId,synthesisAttemptId:first.attempt.id,evaluationGeneration:1,attempt:1,provider:"fixture",model:"fixture",promptVersion:"fixture-v1",schemaValid:true,resultStatus:"SUCCEEDED",latencyMs:1,createdAt:new Date("2026-09-10T00:02:00Z")} ]});
+      await waitForDatabaseLockBarrier(["synthesis_same_generation_winner"]);
+      const loser=loserStore.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedInsufficient,eligible:false,evaluatedAt:new Date("2026-09-10T00:02:01Z"),runs:[]});
+      await waitForDatabaseLockBarrier(["synthesis_same_generation_winner","synthesis_same_generation_loser"]);await release();
+      expect(await winner).toMatchObject({status:"LOCKED",verifiedSynthesisAttemptId:first.attempt.id});expect(await loser).toBeUndefined();
+      const db=postgres(url!);const [authority]=await db<{status:string;verified_synthesis_attempt_id:string|null;locked_at:Date|null;evaluation_state:string;redacted_result:unknown;run_count:number}[]>`SELECT p.status,p.verified_synthesis_attempt_id,p.locked_at,a.evaluation_state,a.redacted_result,(SELECT count(*)::integer FROM ai_runs r WHERE r.synthesis_attempt_id=a.id) run_count FROM play_sessions p JOIN final_synthesis_attempts a ON a.id=p.verified_synthesis_attempt_id WHERE p.id=${session.id}`;await db.end();
+      expect(authority).toMatchObject({status:"LOCKED",verified_synthesis_attempt_id:first.attempt.id,locked_at:expect.any(Date),evaluation_state:"VERIFIED",redacted_result:redactedVerified,run_count:1});
+    }finally{await winnerStore.close();await loserStore.close();}
+  },15_000);
+
+  it("rejects a late generation N completion after generation N+1 succeeds",async()=>{
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:"generation fence",submissionTextHash:identity.hashToken("generation fence")});if(first.kind!=="RESERVED")throw new Error(first.kind);
+    const failed=await store.markFinalSynthesisEvaluationRecoverable({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,failedAt:new Date("2026-09-10T00:02:00Z"),failureCategory:"PROVIDER_UNAVAILABLE",runs:[]});
+    const retry=await store.reserveFinalSynthesisRetry({sessionId:session.id,deviceId:device.id,expectedStateVersion:failed!.stateVersion,attemptId:first.attempt.id,expectedEvaluationGeneration:1,startedAt:new Date("2026-09-10T00:03:00Z"),leaseDurationMs:1000});if(retry.kind!=="RESERVED")throw new Error(retry.kind);
+    const authoritative=await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:2,redactedResult:redactedVerified,eligible:true,evaluatedAt:new Date("2026-09-10T00:04:00Z"),runs:[]});expect(authoritative).toMatchObject({status:"LOCKED",verifiedSynthesisAttemptId:first.attempt.id});
+    expect(await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedInsufficient,eligible:false,evaluatedAt:new Date("2026-09-10T00:05:00Z"),runs:[]})).toBeUndefined();
+    const db=postgres(url!);const [state]=await db<{status:string;verified_synthesis_attempt_id:string|null;locked_at:Date|null;evaluation_state:string;evaluation_generation:number;redacted_result:unknown}[]>`SELECT p.status,p.verified_synthesis_attempt_id,p.locked_at,a.evaluation_state,a.evaluation_generation,a.redacted_result FROM play_sessions p JOIN final_synthesis_attempts a ON a.id=${first.attempt.id} WHERE p.id=${session.id}`;await db.end();expect(state).toMatchObject({status:"LOCKED",verified_synthesis_attempt_id:first.attempt.id,locked_at:expect.any(Date),evaluation_state:"VERIFIED",evaluation_generation:2,redacted_result:redactedVerified});
+  });
+
+  it("serializes expired-lease reclaim against normal completion in either lock order",async()=>{
+    async function race(preferred:"RECLAIM"|"COMPLETE"){
+      const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:`race ${preferred}`,submissionTextHash:identity.hashToken(`race ${preferred}`),submittedAt:new Date("2026-09-10T00:00:00Z"),leaseDurationMs:1});if(first.kind!=="RESERVED")throw new Error(first.kind);
+      const reclaimStore=new PostgresPrimaryStore(namedUrl(`synthesis_reclaim_${preferred.toLowerCase()}`));const completionStore=new PostgresPrimaryStore(namedUrl(`synthesis_complete_${preferred.toLowerCase()}`));const release=await holdSessionRowLock(session.id);
+      const reclaim=()=>reclaimStore.reserveFinalSynthesisRetry({sessionId:session.id,deviceId:device.id,expectedStateVersion:first.session.stateVersion,attemptId:first.attempt.id,expectedEvaluationGeneration:1,startedAt:new Date("2026-09-10T00:01:00Z"),leaseDurationMs:1000});
+      const complete=()=>completionStore.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedVerified,eligible:true,evaluatedAt:new Date("2026-09-10T00:01:00Z"),runs:[]});
+      try{
+        const firstAction=preferred==="RECLAIM"?reclaim():complete();await waitForDatabaseLockBarrier([preferred==="RECLAIM"?`synthesis_reclaim_${preferred.toLowerCase()}`:`synthesis_complete_${preferred.toLowerCase()}`]);
+        const secondAction=preferred==="RECLAIM"?complete():reclaim();await waitForDatabaseLockBarrier([`synthesis_reclaim_${preferred.toLowerCase()}`,`synthesis_complete_${preferred.toLowerCase()}`]);await release();
+        const [firstResult,secondResult]=await Promise.all([firstAction,secondAction]);const reclaimResult=preferred==="RECLAIM"?firstResult:secondResult;const completionResult=preferred==="RECLAIM"?secondResult:firstResult;
+        if(preferred==="RECLAIM"){expect(reclaimResult).toMatchObject({kind:"RESERVED",attempt:{evaluationGeneration:2}});expect(completionResult).toBeUndefined();}
+        else{expect(completionResult).toMatchObject({status:"LOCKED",verifiedSynthesisAttemptId:first.attempt.id});expect(reclaimResult).toMatchObject({kind:"INVALID_STATE"});}
+      }finally{await reclaimStore.close();await completionStore.close();}
+      return{session,attemptId:first.attempt.id};
+    }
+    const reclaimWon=await race("RECLAIM");const completionWon=await race("COMPLETE");const db=postgres(url!);
+    const [reclaimed]=await db<{status:string;evaluation_state:string;evaluation_generation:number;verified_synthesis_attempt_id:string|null}[]>`SELECT p.status,a.evaluation_state,a.evaluation_generation,p.verified_synthesis_attempt_id FROM play_sessions p JOIN final_synthesis_attempts a ON a.id=${reclaimWon.attemptId} WHERE p.id=${reclaimWon.session.id}`;
+    const [completed]=await db<{status:string;evaluation_state:string;evaluation_generation:number;verified_synthesis_attempt_id:string|null}[]>`SELECT p.status,a.evaluation_state,a.evaluation_generation,p.verified_synthesis_attempt_id FROM play_sessions p JOIN final_synthesis_attempts a ON a.id=${completionWon.attemptId} WHERE p.id=${completionWon.session.id}`;await db.end();
+    expect(reclaimed).toEqual({status:"SYNTHESIZING",evaluation_state:"EVALUATING",evaluation_generation:2,verified_synthesis_attempt_id:null});expect(completed).toEqual({status:"LOCKED",evaluation_state:"VERIFIED",evaluation_generation:1,verified_synthesis_attempt_id:completionWon.attemptId});
+  },20_000);
+
+  it("serializes concurrent reservation of synthesis submission two",async()=>{
+    const {device,session}=await startSynthesisSession();const first=await reservation(session,device.id,{text:"first insufficient",submissionTextHash:identity.hashToken("first insufficient")});if(first.kind!=="RESERVED")throw new Error(first.kind);
+    const afterFirst=await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedInsufficient,eligible:false,evaluatedAt:new Date("2026-09-10T00:02:00Z"),runs:[]});if(!afterFirst)throw new Error("first completion failed");const discoveries=structuredClone(afterFirst.discoveries);
+    const winnerStore=new PostgresPrimaryStore(namedUrl("synthesis_second_winner"));const loserStore=new PostgresPrimaryStore(namedUrl("synthesis_second_loser"));const release=await holdSessionRowLock(session.id);
+    try{
+      const winner=reservation(afterFirst,device.id,{attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("second-a"),submissionTextHash:identity.hashToken("second-a"),text:"second a"},winnerStore);await waitForDatabaseLockBarrier(["synthesis_second_winner"]);
+      const loser=reservation(afterFirst,device.id,{attemptId:identity.randomId(),submissionKeyHash:identity.hashToken("second-b"),submissionTextHash:identity.hashToken("second-b"),text:"second b"},loserStore);await waitForDatabaseLockBarrier(["synthesis_second_winner","synthesis_second_loser"]);await release();
+      expect(await winner).toMatchObject({kind:"RESERVED",attempt:{attemptNumber:2}});expect(await loser).toMatchObject({kind:"STALE_STATE_VERSION"});
+      const db=postgres(url!);const [counts]=await db<{total:number;second_count:number;maximum:number}[]>`SELECT count(*)::integer total,count(*) FILTER (WHERE attempt_number=2)::integer second_count,max(attempt_number)::integer maximum FROM final_synthesis_attempts WHERE session_id=${session.id}`;await db.end();expect(counts).toEqual({total:2,second_count:1,maximum:2});const restored=await store.getOwnedSession(session.id,device.id);expect(restored).toMatchObject({turnCount:0,discoveries});
+    }finally{await winnerStore.close();await loserStore.close();}
+  },15_000);
+
+  it("reclaims an expired evaluating lease without consuming another submission",async()=>{
+    const {device,session}=await startSynthesisSession();const text="same raw synthesis";const first=await reservation(session,device.id,{text,submissionTextHash:identity.hashToken(text),submittedAt:new Date("2026-09-10T00:00:00Z"),leaseDurationMs:1});if(first.kind!=="RESERVED")throw new Error(first.kind);
+    const retry=await store.reserveFinalSynthesisRetry({sessionId:session.id,deviceId:device.id,expectedStateVersion:first.session.stateVersion,attemptId:first.attempt.id,expectedEvaluationGeneration:1,startedAt:new Date("2026-09-10T00:01:00Z"),leaseDurationMs:60_000});expect(retry).toMatchObject({kind:"RESERVED",attempt:{id:first.attempt.id,attemptNumber:1,evaluationGeneration:2,text}});
+    expect(await store.completeFinalSynthesisEvaluation({sessionId:session.id,deviceId:device.id,attemptId:first.attempt.id,evaluationGeneration:1,redactedResult:redactedVerified,eligible:true,evaluatedAt:new Date("2026-09-10T00:01:01Z"),runs:[]})).toBeUndefined();
+    const db=postgres(url!);const [state]=await db<{rows:number;attempt_number:number;evaluation_generation:number;evaluation_state:string;text:string;lease_is_new:boolean}[]>`SELECT count(*) OVER()::integer rows,attempt_number,evaluation_generation,evaluation_state,text,evaluation_lease_expires_at=${new Date("2026-09-10T00:02:00Z")} lease_is_new FROM final_synthesis_attempts WHERE session_id=${session.id}`;await db.end();expect(state).toEqual({rows:1,attempt_number:1,evaluation_generation:2,evaluation_state:"EVALUATING",text,lease_is_new:true});
   });
 });

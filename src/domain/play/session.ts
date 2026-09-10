@@ -27,6 +27,36 @@ export interface GuidanceEvent {
   readonly text: string;
 }
 
+export type SynthesisEntryReason = "DISCOVERY_READY" | "RESCUE_EXHAUSTED";
+
+export type FinalSynthesisEvaluationState =
+  | "EVALUATING"
+  | "VERIFIED"
+  | "INSUFFICIENT"
+  | "ERROR_RECOVERABLE";
+
+export interface FinalSynthesisAttempt {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly attemptNumber: 1 | 2;
+  readonly submissionKeyHash: string;
+  readonly submissionTextHash: string;
+  readonly text?: string;
+  readonly charCount: number;
+  readonly submittedAt: Date;
+  readonly evaluationState: FinalSynthesisEvaluationState;
+  readonly evaluationGeneration: number;
+  readonly evaluationStartedAt?: Date;
+  readonly evaluationLeaseExpiresAt?: Date;
+  readonly evaluatedAt?: Date;
+  readonly lastErrorAt?: Date;
+  readonly proofContractVersion: "final-synthesis-proof-v1";
+  readonly redactedResult?: unknown;
+  readonly failureCategory?: string;
+  readonly purgedAt?: Date;
+  readonly updatedAt: Date;
+}
+
 export interface PlaySession {
   readonly id: string;
   readonly dailyId: string;
@@ -40,6 +70,11 @@ export interface PlaySession {
   readonly discoveries: readonly NodeDiscovery[];
   readonly guidance: readonly GuidanceEvent[];
   readonly lockEvidence?: EvidenceRef;
+  readonly synthesisEntryReason?: SynthesisEntryReason;
+  readonly synthesisEnteredAt?: Date;
+  readonly synthesisSkippedAt?: Date;
+  readonly verifiedSynthesisAttemptId?: string;
+  readonly lockedAt?: Date;
   readonly revealCompleted: boolean;
   readonly stateVersion: number;
 }

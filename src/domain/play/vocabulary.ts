@@ -11,6 +11,8 @@ export const PLAY_STATUSES = Object.freeze([
   "THINKING",
   "EVALUATING",
   "LOCKABLE",
+  "SYNTHESIZING",
+  "REVEAL_READY",
   "LOCKED",
   "REVEALED",
   "ERROR_RECOVERABLE",
