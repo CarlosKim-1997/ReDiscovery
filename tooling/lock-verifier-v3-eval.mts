@@ -91,6 +91,18 @@ export async function loadLockVerifierV3Manifest(directory = suiteRoot): Promise
   return manifest;
 }
 
+export function resolveLockVerifierV3Credentials(
+  environment: Readonly<Record<string, string | undefined>>,
+  candidateModel: string,
+) {
+  const model = environment.ADJUDICATION_MODEL;
+  if (!model) throw new Error("ADJUDICATION_MODEL is required for explicit real Lock Verifier v3 evaluation");
+  if (model !== candidateModel) throw new Error("ADJUDICATION_MODEL must equal the Lock Verifier v3 manifest candidate_model");
+  const apiKey = environment.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is required for explicit real Lock Verifier v3 evaluation");
+  return { apiKey, model } as const;
+}
+
 export async function loadLockVerifierV3Cases(directory = suiteRoot): Promise<V3Case[]> {
   const manifest = await loadLockVerifierV3Manifest(directory);
   const content = approvedContentSchema.parse(JSON.parse(await readFile(path.resolve("content/approved/conway-law.v4.json"), "utf8")));
@@ -180,10 +192,8 @@ export function buildLockVerifierV3Acceptance(input: AcceptanceInput) {
 }
 
 export async function runLockVerifierV3Eval() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.ADJUDICATION_MODEL;
-  if (!apiKey || !model) throw new Error("OPENAI_API_KEY and ADJUDICATION_MODEL are required for explicit real Lock Verifier v3 evaluation");
   const manifest = await loadLockVerifierV3Manifest();
+  const { apiKey, model } = resolveLockVerifierV3Credentials(process.env, manifest.candidate_model);
   const cases = await loadLockVerifierV3Cases();
   const content = approvedContentSchema.parse(JSON.parse(await readFile(path.resolve("content/approved/conway-law.v4.json"), "utf8")));
   if (content.schema_version !== 2) throw new Error("Lock verifier v3 requires content schema v2");

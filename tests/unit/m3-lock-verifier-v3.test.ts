@@ -141,15 +141,46 @@ describe("M3 Lock Verifier v3 component proof contract", () => {
     expect(deriveLockVerificationFromProofV3(crossProof, cross).nodes[0]!.support).toBe("VERIFIED");
   });
 
+  it("accepts multiple UNIQUE antecedents from one or several earlier answers", () => {
+    const sameAnswer = inputFor([{ answerId: "answer-1", text: "Source. Output. Those correspond." }]);
+    expect(deriveLockVerificationFromProofV3(proof([
+      component("SOURCE"),
+      component("MAPPING", {
+        referenceStatus: "UNIQUE_WITHIN_SUPPLIED_EVIDENCE",
+        evidenceUnitIds: ["answer-1:u3"],
+        antecedentEvidenceUnitIds: ["answer-1:u1", "answer-1:u2"],
+      }),
+    ]), sameAnswer).nodes[0]!.support).toBe("VERIFIED");
+
+    const severalAnswers = inputFor([
+      { answerId: "answer-1", text: "Source." },
+      { answerId: "answer-2", text: "Output." },
+      { answerId: "answer-3", text: "Those correspond." },
+    ]);
+    expect(deriveLockVerificationFromProofV3(proof([
+      component("SOURCE"),
+      component("MAPPING", {
+        referenceStatus: "UNIQUE_WITHIN_SUPPLIED_EVIDENCE",
+        evidenceUnitIds: ["answer-3:u1"],
+        antecedentEvidenceUnitIds: ["answer-1:u1", "answer-2:u1"],
+      }),
+    ]), severalAnswers).nodes[0]!.support).toBe("VERIFIED");
+  });
+
   it("rejects missing, overlapping, or non-earlier UNIQUE antecedents", () => {
     const input = inputFor([{ answerId: "answer-1", text: "Earlier. Later." }]);
     const unique = (overrides: Partial<UnvalidatedComponentProof>) => proof([
       component("SOURCE"),
       component("MAPPING", { referenceStatus: "UNIQUE_WITHIN_SUPPLIED_EVIDENCE", evidenceUnitIds: ["answer-1:u2"], antecedentEvidenceUnitIds: ["answer-1:u1"], ...overrides }),
     ]);
+    expect(() => deriveLockVerificationFromProofV3(unique({ evidenceUnitIds: [], componentMatch: "PARTIAL_COMPONENT_MATCH" }), input)).toThrow(/UNIQUE_EVIDENCE_REQUIRED/);
     expect(() => deriveLockVerificationFromProofV3(unique({ antecedentEvidenceUnitIds: [] }), input)).toThrow(/UNIQUE_ANTECEDENT_REQUIRED/);
     expect(() => deriveLockVerificationFromProofV3(unique({ evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: ["answer-1:u2"] }), input)).toThrow(/ANTECEDENT_NOT_EARLIER/);
     expect(() => deriveLockVerificationFromProofV3(unique({ evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: ["answer-1:u1"] }), input)).toThrow(/EVIDENCE_ANTECEDENT_OVERLAP/);
+    expect(() => deriveLockVerificationFromProofV3(unique({ evidenceUnitIds: ["answer-1:u2", "answer-1:u2"] }), input)).toThrow(/DUPLICATE_EVIDENCE_UNIT_ID/);
+    expect(() => deriveLockVerificationFromProofV3(unique({ antecedentEvidenceUnitIds: ["answer-1:u1", "answer-1:u1"] }), input)).toThrow(/DUPLICATE_ANTECEDENT_EVIDENCE_UNIT_ID/);
+    expect(() => deriveLockVerificationFromProofV3(unique({ evidenceUnitIds: ["missing"] }), input)).toThrow(/UNKNOWN_EVIDENCE_UNIT/);
+    expect(() => deriveLockVerificationFromProofV3(unique({ antecedentEvidenceUnitIds: ["missing"] }), input)).toThrow(/UNKNOWN_EVIDENCE_UNIT/);
   });
 
   it("retains a redacted rejected proof and stable structural reason", async () => {

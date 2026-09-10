@@ -86,7 +86,6 @@ export const LOCK_PROOF_V3_VALIDATION_REASONS = [
   "UNIQUE_EVIDENCE_REQUIRED",
   "UNIQUE_ANTECEDENT_REQUIRED",
   "UNIQUE_MULTI_REFERRING_ANSWER",
-  "UNIQUE_MULTI_ANTECEDENT_ANSWER",
   "ANTECEDENT_NOT_EARLIER",
   "DUPLICATE_INPUT_ANSWER_ID",
   "DUPLICATE_INPUT_EVIDENCE_UNIT_ID",
@@ -197,7 +196,6 @@ function validateComponent(
   if (evidence.length === 0) fail("PROOF_RECORD_INVALID", "UNIQUE_EVIDENCE_REQUIRED");
   if (antecedents.length === 0) fail("PROOF_RECORD_INVALID", "UNIQUE_ANTECEDENT_REQUIRED");
   if (new Set(evidence.map(({ answerId }) => answerId)).size !== 1) fail("PROOF_RECORD_INVALID", "UNIQUE_MULTI_REFERRING_ANSWER");
-  if (new Set(antecedents.map(({ answerId }) => answerId)).size !== 1) fail("PROOF_RECORD_INVALID", "UNIQUE_MULTI_ANTECEDENT_ANSWER");
   const firstReferring = [...evidence].sort((left, right) => compareUnits(left, right, answerOrder))[0]!;
   if (antecedents.some((unit) => compareUnits(unit, firstReferring, answerOrder) >= 0)) fail("PROOF_RECORD_INVALID", "ANTECEDENT_NOT_EARLIER");
 }

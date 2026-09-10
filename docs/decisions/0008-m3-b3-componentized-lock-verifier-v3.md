@@ -23,12 +23,14 @@ admissibly referenced, completely matched, and structurally valid.
 ## Reference and evidence order
 
 `UNIQUE_WITHIN_SUPPLIED_EVIDENCE` replaces the answer-boundary-specific v2
-status. A distinct antecedent may be an earlier unit in the same answer or in an
-earlier supplied answer. Canonical ordering uses supplied answer order, then the
-exact UTF-16 unit start/end. All antecedent units must precede the first referring
-unit. The validator proves only scope, identity, and order; semantic uniqueness
-remains a conservative model judgment. Ambiguous or unresolved references derive
-insufficient.
+status. Every reference required by the selected component proposition must have
+exactly one explicit antecedent in supplied evidence. One proposition may require
+several antecedent units, including units from several earlier answers; same-answer
+earlier units also remain admissible. Canonical ordering uses supplied answer
+order, then the exact UTF-16 unit start/end. All antecedent units must precede the
+first referring unit. The validator proves only scope, identity, and order;
+semantic uniqueness remains a conservative model judgment. If any required
+reference is ambiguous or unresolved, the component derives insufficient.
 
 Only required node/component definitions and deterministic evidence units enter
 the provider payload. Judge results, prior state, Guidance, Reveal content,
@@ -68,7 +70,13 @@ Holdout behavior changes here.
 
 | Identity | SHA-256 |
 | --- | --- |
-| `lock-verify-v3` prompt | `a6a698a889085e7f6b4a5fc95a0cce119b0acce03d2d06ea92fa0c080a11fc36` |
+| `lock-verify-v3` prompt | `be86c4fe20921d866b9774892b893812d9348acdfa993a9d8256f95d38fbf5bd` |
 | v3 manifest | `f41f8a964ee90309712af700e84a8708a60507beb1ca3663efb590af962a0382` |
 | six v3 targeted cases | `b2474b471a10bcc6637a0ce0cbc36d550f353b0f7645232443369762bc9e5047` |
 | `conway-law` v4 file | `c57fb6171c0fc281c495c8d6500ae81cb2eec72ed7a54c77f1a17295e53c747b` |
+
+Before any v3 provider run, the reference clarification changed only the v3
+prompt string hash from
+`a6a698a889085e7f6b4a5fc95a0cce119b0acce03d2d06ea92fa0c080a11fc36`
+to `be86c4fe20921d866b9774892b893812d9348acdfa993a9d8256f95d38fbf5bd`.
+The `lock-verify-v3` major identity is retained.

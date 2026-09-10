@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { approvedContentSchema } from "@/domain/content/schema";
+import { deriveLockVerificationFromProofV3, isDerivedLockVerificationV3Approved } from "@/application/play/lock-proof-v3";
+import { validateLockProofV3Structure, type UnvalidatedLockProofV3 } from "@/ports/lock-verifier-v3";
 import { LOCK_VERIFIER_V2_SYSTEM_PROMPT } from "@/shared/lock-verifier-v2-prompts";
 import { LOCK_VERIFIER_V3_SYSTEM_PROMPT } from "@/shared/lock-verifier-v3-prompts";
 import { assertLockVerifierReportRedacted } from "../../tooling/lock-verifier-eval.mts";
@@ -11,12 +13,13 @@ import {
   buildLockVerifierV3Acceptance,
   loadLockVerifierV3Cases,
   loadLockVerifierV3Manifest,
+  resolveLockVerifierV3Credentials,
 } from "../../tooling/lock-verifier-v3-eval.mts";
 
 describe("M3 Lock Verifier v3 development evaluation", () => {
   it("pins the 164 + 6 composition and hard cap", async () => {
     const manifest = await loadLockVerifierV3Manifest();
-    expect(manifest).toMatchObject({ dataset_version: "lock-verifier-dev-v3", prompt_version: "lock-verify-v3", proof_contract_version: "lock-proof-v3", evaluator_version: "lock-verifier-eval-v3", content_slug: "conway-law", content_version: 4, expected_inherited_case_count: 164, expected_targeted_case_count: 6, expected_total_case_count: 170, hard_case_cap: 170, inherited_v2_case_identity_sha256: "40f618bb942354802fbcd30d63444bfd396862fc3a1f59fcef0fdcb9347bbc57" });
+    expect(manifest).toMatchObject({ dataset_version: "lock-verifier-dev-v3", prompt_version: "lock-verify-v3", proof_contract_version: "lock-proof-v3", evaluator_version: "lock-verifier-eval-v3", content_slug: "conway-law", content_version: 4, expected_inherited_case_count: 164, expected_targeted_case_count: 6, expected_total_case_count: 170, hard_case_cap: 170, inherited_v2_case_identity_sha256: "40f618bb942354802fbcd30d63444bfd396862fc3a1f59fcef0fdcb9347bbc57", candidate_model: "gpt-5.6-luna" });
     const cases = await loadLockVerifierV3Cases();
     expect(cases).toHaveLength(170);
     expect(cases.filter(({ source }) => source === "inherited-v2")).toHaveLength(164);
@@ -50,6 +53,39 @@ describe("M3 Lock Verifier v3 development evaluation", () => {
       expect(JSON.stringify(testCase.input.answers)).not.toMatch(/messy-|seed-020|prior-state-02|rejected-quote-04|spacing-full-04/);
     }
     expect(targeted.find(({ id }) => id === "v3-component-generic-influence-01")!.expectedSupports.SYSTEM_RESEMBLANCE).toBe("INSUFFICIENT");
+  });
+
+  it("represents distributed structural correspondence with two earlier antecedent answers", async () => {
+    const testCase = (await loadLockVerifierV3Cases()).find(({ id }) => id === "v3-component-distributed-evidence-01")!;
+    const proof: UnvalidatedLockProofV3 = { nodes: [
+      { nodeId: "TEAM_BOUNDARIES", components: [{ componentId: "ACTOR_GROUPING", endorsementStatus: "ENDORSED", referenceStatus: "SELF_CONTAINED", componentMatch: "COMPLETE_COMPONENT_MATCH", evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: [] }] },
+      { nodeId: "COMMUNICATION_FRICTION", components: [{ componentId: "COMMUNICATION_DIFFERENCE", endorsementStatus: "ENDORSED", referenceStatus: "SELF_CONTAINED", componentMatch: "COMPLETE_COMPONENT_MATCH", evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: [] }] },
+      { nodeId: "SYSTEM_RESEMBLANCE", components: [
+        { componentId: "SOURCE_BOUNDARY", endorsementStatus: "ENDORSED", referenceStatus: "SELF_CONTAINED", componentMatch: "COMPLETE_COMPONENT_MATCH", evidenceUnitIds: ["answer-1:u1"], antecedentEvidenceUnitIds: [] },
+        { componentId: "OUTPUT_STRUCTURE", endorsementStatus: "ENDORSED", referenceStatus: "SELF_CONTAINED", componentMatch: "COMPLETE_COMPONENT_MATCH", evidenceUnitIds: ["answer-2:u1"], antecedentEvidenceUnitIds: [] },
+        { componentId: "STRUCTURAL_CORRESPONDENCE", endorsementStatus: "ENDORSED", referenceStatus: "UNIQUE_WITHIN_SUPPLIED_EVIDENCE", componentMatch: "COMPLETE_COMPONENT_MATCH", evidenceUnitIds: ["answer-3:u1"], antecedentEvidenceUnitIds: ["answer-1:u1", "answer-2:u1"] },
+      ] },
+    ] };
+
+    expect(() => validateLockProofV3Structure(proof, testCase.input)).not.toThrow();
+    const derived = deriveLockVerificationFromProofV3(proof, testCase.input);
+    expect(derived.nodes.find(({ nodeId }) => nodeId === "SYSTEM_RESEMBLANCE")!.support).toBe("VERIFIED");
+    expect(isDerivedLockVerificationV3Approved(derived)).toBe(true);
+  });
+
+  it("rejects a non-manifest candidate model before provider setup", async () => {
+    let apiKeyRead = false;
+    const environment = new Proxy<Record<string, string | undefined>>({ ADJUDICATION_MODEL: "gpt-5.6-terra", OPENAI_API_KEY: "secret" }, {
+      get(target, property: string) {
+        if (property === "OPENAI_API_KEY") apiKeyRead = true;
+        return target[property];
+      },
+    });
+    expect(() => resolveLockVerifierV3Credentials(environment, "gpt-5.6-luna")).toThrow(/must equal.*candidate_model/);
+    expect(apiKeyRead).toBe(false);
+    expect(resolveLockVerifierV3Credentials({ ADJUDICATION_MODEL: "gpt-5.6-luna", OPENAI_API_KEY: "secret" }, "gpt-5.6-luna")).toEqual({ model: "gpt-5.6-luna", apiKey: "secret" });
+    const evaluatorSource = await readFile(path.resolve("tooling/lock-verifier-v3-eval.mts"), "utf8");
+    expect(evaluatorSource.indexOf("resolveLockVerifierV3Credentials(process.env")).toBeLessThan(evaluatorSource.indexOf("new OpenAIResponsesLockVerifierV3Transport"));
   });
 
   it("parses historical schema v1 unchanged and makes v4 an explicit schema v2 extension", async () => {
@@ -126,7 +162,7 @@ describe("M3 Lock Verifier v3 development evaluation", () => {
     expect(createHash("sha256").update(LOCK_VERIFIER_V2_SYSTEM_PROMPT).digest("hex")).toBe("7f0735a9bcffe3d96c327db0d9b00f6edd2bd5ea3a7cfb7d77589467195a6b2d");
     expect(createHash("sha256").update(await readFile(path.resolve("eval/lock-verifier/v2/manifest.json"))).digest("hex")).toBe("2d3011131b7f590503478fd017d2ade88f3deeee63a67da03bb40af7a509ea3f");
     expect(createHash("sha256").update(await readFile(path.resolve("eval/lock-verifier/v2/targeted-cases.json"))).digest("hex")).toBe("8d38c03a674640a60b3df8957c827122762ca659c6d6df87d840483a104d5341");
-    expect(createHash("sha256").update(LOCK_VERIFIER_V3_SYSTEM_PROMPT).digest("hex")).toBe("a6a698a889085e7f6b4a5fc95a0cce119b0acce03d2d06ea92fa0c080a11fc36");
+    expect(createHash("sha256").update(LOCK_VERIFIER_V3_SYSTEM_PROMPT).digest("hex")).toBe("be86c4fe20921d866b9774892b893812d9348acdfa993a9d8256f95d38fbf5bd");
     expect(createHash("sha256").update(await readFile(path.resolve("eval/lock-verifier/v3/manifest.json"))).digest("hex")).toBe("f41f8a964ee90309712af700e84a8708a60507beb1ca3663efb590af962a0382");
     expect(createHash("sha256").update(await readFile(path.resolve("eval/lock-verifier/v3/targeted-cases.json"))).digest("hex")).toBe("b2474b471a10bcc6637a0ce0cbc36d550f353b0f7645232443369762bc9e5047");
     expect(createHash("sha256").update(await readFile(path.resolve("content/approved/conway-law.v4.json"))).digest("hex")).toBe("c57fb6171c0fc281c495c8d6500ae81cb2eec72ed7a54c77f1a17295e53c747b");
