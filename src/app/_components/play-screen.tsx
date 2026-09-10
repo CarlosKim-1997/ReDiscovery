@@ -1,25 +1,30 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PublicSessionView } from "@/application/play/session-view";
 import { loadSession } from "./session-client";
 import type { DailyPayload } from "./session-types";
+import { canonicalSessionRoute } from "./session-routing";
 
 export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
   const [payload, setPayload] = useState<DailyPayload | null>(null);
   const [thought, setThought] = useState("");
+  const [synthesisText, setSynthesisText] = useState("");
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const synthesisRequestKey = useRef<string | null>(null);
+
+  const applyCanonicalPayload = useCallback((loaded: DailyPayload) => {
+    const destination=canonicalSessionRoute(loaded.session.status,sessionId);
+    if(destination){router.replace(destination);return;}
+    setPayload(loaded);
+  },[router,sessionId]);
 
   useEffect(() => {
-    void loadSession(sessionId).then((loaded) => {
-      if (loaded.session.status === "LOCKED") router.replace(`/reveal/${sessionId}`);
-      else if (loaded.session.status === "REVEALED") router.replace(`/result/${sessionId}`);
-      else setPayload(loaded);
-    }).catch(() => setError("세션을 불러오지 못했습니다."));
-  }, [router, sessionId]);
+    void loadSession(sessionId).then(applyCanonicalPayload).catch(() => setError("세션을 불러오지 못했습니다."));
+  }, [applyCanonicalPayload, sessionId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -59,14 +64,69 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     setPayload((current) => current ? { ...current, session } : current);
   }
 
+  async function submitSynthesis(event: FormEvent) {
+    event.preventDefault();
+    if (!payload || !synthesisText.trim() || evaluating || !payload.session.synthesis?.canSubmit) return;
+    setEvaluating(true); setError(null);
+    synthesisRequestKey.current ??= crypto.randomUUID();
+    try { const response = await fetch(`/api/play-sessions/${sessionId}/final-synthesis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": synthesisRequestKey.current },
+      body: JSON.stringify({ text: synthesisText, expectedStateVersion: payload.session.stateVersion }),
+    }); await applySynthesisResponse(response); }
+    catch { await recoverSynthesisNetworkFailure(); }
+  }
+
+  async function retrySynthesis() {
+    if (!payload || evaluating) return;
+    setEvaluating(true); setError(null);
+    try { const response = await fetch(`/api/play-sessions/${sessionId}/final-synthesis/retry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedStateVersion: payload.session.stateVersion }),
+    }); await applySynthesisResponse(response); } catch { await recoverSynthesisNetworkFailure(); }
+  }
+
+  async function skipSynthesis() {
+    if (!payload || evaluating) return;
+    setEvaluating(true); setError(null);
+    try { const response = await fetch(`/api/play-sessions/${sessionId}/final-synthesis/skip`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedStateVersion: payload.session.stateVersion }),
+    }); await applySynthesisResponse(response); } catch { await recoverSynthesisNetworkFailure(); }
+  }
+
+  async function applySynthesisResponse(response: Response) {
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({})) as { error?: string };
+      const refreshed = await loadSession(sessionId).catch(() => null);
+      if (refreshed) applyCanonicalPayload(refreshed);
+      setError(failure.error === "FINAL_SYNTHESIS_UNAVAILABLE"
+        ? "지금은 마지막 정리를 살펴보지 못했습니다. 같은 글로 다시 시도할 수 있어요."
+        : "마지막 정리를 처리하지 못했습니다. 상태를 확인한 뒤 다시 시도해주세요.");
+      setEvaluating(false); return;
+    }
+    const loaded = await response.json() as DailyPayload;
+    applyCanonicalPayload(loaded); setSynthesisText(""); synthesisRequestKey.current=null; setEvaluating(false);
+  }
+
+  async function recoverSynthesisNetworkFailure() {
+    const refreshed=await loadSession(sessionId).catch(()=>null);if(refreshed)applyCanonicalPayload(refreshed);
+    setError("연결이 끊겼습니다. 저장된 상태를 확인한 뒤 다시 시도해주세요.");setEvaluating(false);
+  }
+
   if (error && !payload) return <main className="page-shell"><p role="alert">{error}</p></main>;
   if (!payload) return <main className="page-shell"><p className="status-copy">문제를 준비하는 중…</p></main>;
   const { daily, session } = payload;
   const latestGuidance = session.guidance.at(-1);
   const lockable = session.status === "LOCKABLE";
+  const synthesizing = session.status === "SYNTHESIZING" && Boolean(session.synthesis);
   const displayedTurn = Math.min(session.turnCount + (lockable ? 0 : 1), session.maxTurns);
   const turnLabel = session.correctiveRescueAvailable
     ? `${session.turnCount}개의 생각을 제출했고 정정 도움을 확인하는 중입니다`
+    : synthesizing
+    ? `${session.turnCount}개의 생각 이후 마지막 정리 중입니다`
     : lockable
     ? `${session.turnCount}개의 생각을 제출했고 이제 잠글 수 있습니다`
     : `${displayedTurn}번째 생각 작성 중`;
@@ -75,9 +135,9 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     <main className="page-shell play-shell">
       <header className="play-header">
         <p className="eyebrow">{daily.label} · 약 {daily.estimatedMinutes}분</p>
-        <span aria-label={turnLabel}>{displayedTurn} / {session.maxTurns}</span>
+        <span aria-label={turnLabel}>{synthesizing ? session.turnCount : displayedTurn} / {session.maxTurns}</span>
       </header>
-      {!lockable ? (
+      {!lockable && !synthesizing ? (
         <section className="scenario-card" aria-labelledby="scenario-title">
           <h1 id="scenario-title">반복되는 모양</h1>
           <p>{daily.scenario}</p>
@@ -98,7 +158,21 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
         </details>
       ) : null}
 
-      {evaluating ? (
+      {synthesizing ? (
+        <section className="synthesis-panel" aria-labelledby="synthesis-title">
+          <p className="eyebrow">마지막 정리</p>
+          <h2 id="synthesis-title">이제 당신이 발견한 원리를 스스로 정리해보세요.</h2>
+          <p>앞선 대화를 보지 않아도 이 글만으로 생각과 관계가 이어지도록 당신의 말로 적어주세요.</p>
+          {session.synthesis!.finalRewriteRequired ? <p className="synthesis-guidance" role="status">이 글만으로는 결론이 충분히 드러나지 않았어요. 앞선 대화를 보지 않아도 생각과 이유가 이어지도록 한 번 더 정리해볼까요?</p> : null}
+          {session.synthesis!.evaluationInProgress || evaluating ? <div className="thinking-panel" aria-live="polite"><h2>마지막 정리를 살펴보는 중…</h2></div> : session.synthesis!.canRetryEvaluation ? <div className="synthesis-actions"><button className="primary-button" type="button" onClick={retrySynthesis}>같은 글 다시 살펴보기</button><button className="secondary-button" type="button" onClick={skipSynthesis}>공개로 넘어가기</button></div> : <form className="composer" onSubmit={submitSynthesis}>
+            <label htmlFor="final-synthesis">당신의 마지막 정리</label>
+            <textarea id="final-synthesis" name="final-synthesis" maxLength={session.synthesis!.maxChars} rows={6} value={synthesisText} onChange={(event)=>{setSynthesisText(event.target.value);synthesisRequestKey.current=null;}} placeholder="당신이 발견한 관계를 이 글 안에 온전히 담아보세요." />
+            <div className="composer-footer"><span className="counter visible">{synthesisText.length} / {session.synthesis!.maxChars}</span><button className="primary-button" disabled={!synthesisText.trim() || !session.synthesis!.canSubmit} type="submit">{session.synthesis!.finalRewriteRequired ? "마지막으로 다시 정리하기" : "마지막 정리 제출하기"}</button></div>
+          </form>}
+          {session.synthesis!.canSkip && !session.synthesis!.canRetryEvaluation && !evaluating ? <button className="secondary-button synthesis-skip" type="button" onClick={skipSynthesis}>정리 없이 공개로 넘어가기</button> : null}
+          <p className="attempt-copy">제출 {session.synthesis!.attemptsUsed} / {session.synthesis!.maxSubmissions}</p>
+        </section>
+      ) : evaluating ? (
         <section className="thinking-panel" aria-live="polite">
           <p className="eyebrow">살펴보기</p>
           <h2>생각을 살펴보는 중…</h2>

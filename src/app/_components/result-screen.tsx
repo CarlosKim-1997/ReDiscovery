@@ -14,7 +14,7 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
     async function load() {
       try {
         const payload = await loadSession(sessionId);
-        if (payload.session.status === "LOCKED") {
+        if (payload.session.status === "LOCKED" || payload.session.status === "REVEAL_READY") {
           return router.replace(`/reveal/${sessionId}`);
         }
         if (payload.session.status !== "REVEALED") {
@@ -38,17 +38,17 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
       <p className="eyebrow">오늘의 연결</p>
       <h1>{reveal.theory}</h1>
       <p className="historical-line">{reveal.year} · {reveal.person}</p>
-      <section className="result-card">
-        <h2>당신이 먼저 적은 생각</h2>
+      {reveal.representativeThought ? <section className="result-card">
+        <h2>{reveal.discoveryOutcome === "VERIFIED_FINAL_SYNTHESIS" ? "당신이 마지막으로 정리한 생각" : "당신이 먼저 적은 생각"}</h2>
         <blockquote>{reveal.representativeThought}</blockquote>
-      </section>
+      </section> : null}
       <section className="connection-card">
         <h2>어디에서 만났을까요?</h2>
         <p>{reveal.connection}</p>
         <p>{reveal.explanation}</p>
       </section>
       <p className="guidance-provenance">
-        {reveal.substantialGuidanceUsed ? "도움을 통해 핵심 구조와 만났습니다." : "핵심 구조를 스스로 발견했습니다."}
+        {reveal.discoveryOutcome === "UNVERIFIED_REVEAL" ? "잠금 없이 공개까지 살펴보았습니다." : reveal.substantialGuidanceUsed ? "도움을 통해 핵심 구조와 만났습니다." : "핵심 구조를 스스로 발견했습니다."}
       </p>
       <button className="secondary-button" onClick={() => router.push("/")}>처음으로</button>
     </main>

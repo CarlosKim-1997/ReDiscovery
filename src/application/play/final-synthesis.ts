@@ -13,7 +13,7 @@ export const FINAL_SYNTHESIS_EVALUATION_LEASE_MS = 120_000;
 
 export class FinalSynthesisApplicationError extends Error {
   constructor(readonly code:
-    | "SESSION_NOT_FOUND" | "FINAL_SYNTHESIS_NOT_ENABLED" | "INVALID_SYNTHESIS_STATE"
+    | "SESSION_NOT_FOUND" | "FINAL_SYNTHESIS_NOT_ENABLED" | "INVALID_SYNTHESIS_STATE" | "INVALID_SYNTHESIS_TEXT"
     | "STALE_STATE_VERSION" | "IDEMPOTENCY_CONFLICT" | "SUBMISSION_LIMIT"
     | "ACTIVE_EVALUATION" | "STALE_EVALUATION_GENERATION") { super(code); }
 }
@@ -29,12 +29,19 @@ export interface FinalSynthesisDeps {
 export async function submitFinalSynthesis(deps:FinalSynthesisDeps,input:{readonly deviceId:string;readonly sessionId:string;readonly text:string;readonly idempotencyKey:string;readonly expectedStateVersion:number}){
   const session=await deps.store.getOwnedSession(input.sessionId,input.deviceId);if(!session)throw new FinalSynthesisApplicationError("SESSION_NOT_FOUND");
   const content=await deps.store.getContentVersion(session.contentVersionId);if(!content||!("final_synthesis" in content.serverPolicy))throw new FinalSynthesisApplicationError("FINAL_SYNTHESIS_NOT_ENABLED");
+  if(!input.text.trim()||input.text.length>content.serverPolicy.final_synthesis.max_chars)throw new FinalSynthesisApplicationError("INVALID_SYNTHESIS_TEXT");
   const verifierInput=buildInput(content.serverPolicy.lock_verifier.nodes,input.text);
   const now=deps.clock.now();
   const reserved=await deps.store.reserveFinalSynthesisSubmission({sessionId:session.id,deviceId:input.deviceId,expectedStateVersion:input.expectedStateVersion,attemptId:deps.identity.randomId(),submissionKeyHash:deps.identity.hashToken(input.idempotencyKey),submissionTextHash:deps.identity.hashToken(input.text),text:input.text,submittedAt:now,leaseDurationMs:deps.leaseDurationMs??FINAL_SYNTHESIS_EVALUATION_LEASE_MS});
   if(reserved.kind==="IDEMPOTENT")return{kind:"IDEMPOTENT" as const,session:reserved.session,attempt:reserved.attempt};
   if(reserved.kind!=="RESERVED")throw mapStoreError(reserved.kind);
   return evaluateReserved(deps,reserved.session,reserved.attempt,verifierInput);
+}
+
+export async function retryCurrentFinalSynthesisEvaluation(deps:FinalSynthesisDeps,input:{readonly deviceId:string;readonly sessionId:string;readonly expectedStateVersion:number}){
+  const attempts=await deps.store.getFinalSynthesisAttempts(input.sessionId,input.deviceId);if(!attempts)throw new FinalSynthesisApplicationError("SESSION_NOT_FOUND");
+  const latest=attempts.at(-1);if(!latest)throw new FinalSynthesisApplicationError("INVALID_SYNTHESIS_STATE");
+  return retryFinalSynthesisEvaluation(deps,{...input,attemptId:latest.id,expectedEvaluationGeneration:latest.evaluationGeneration});
 }
 
 export async function retryFinalSynthesisEvaluation(deps:FinalSynthesisDeps,input:{readonly deviceId:string;readonly sessionId:string;readonly attemptId:string;readonly expectedStateVersion:number;readonly expectedEvaluationGeneration:number}){
@@ -47,6 +54,8 @@ export async function retryFinalSynthesisEvaluation(deps:FinalSynthesisDeps,inpu
 }
 
 export async function skipFinalSynthesis(deps:FinalSynthesisDeps,input:{readonly deviceId:string;readonly sessionId:string;readonly expectedStateVersion:number}){
+  const session=await deps.store.getOwnedSession(input.sessionId,input.deviceId);if(!session)throw new FinalSynthesisApplicationError("SESSION_NOT_FOUND");
+  const content=await deps.store.getContentVersion(session.contentVersionId);if(!content||!("final_synthesis" in content.serverPolicy))throw new FinalSynthesisApplicationError("FINAL_SYNTHESIS_NOT_ENABLED");
   const result=await deps.store.skipFinalSynthesis({...input,skippedAt:deps.clock.now()});
   if(!result)throw new FinalSynthesisApplicationError("INVALID_SYNTHESIS_STATE");return result;
 }

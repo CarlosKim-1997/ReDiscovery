@@ -19,16 +19,16 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
       APP_ENV: test
       JUDGE_ADAPTER: fake
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/g1_test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/rediscovery_e2e
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: g1_test
+          POSTGRES_DB: rediscovery_e2e
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres -d g1_test"
+          --health-cmd "pg_isready -U postgres -d rediscovery_e2e"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4

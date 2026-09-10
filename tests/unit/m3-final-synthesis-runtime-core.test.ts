@@ -3,13 +3,21 @@ import rawV1 from "../../content/approved/conway-law.v1.json";
 import rawV5 from "../../content/approved/conway-law.v5.json";
 import { approvedContentSchema } from "@/domain/content/schema";
 import { createPlaySession,type PlaySession } from "@/domain/play/session";
-import { applyCorrectiveRescue,applyJudgeVerdict,beginEvaluation,lockPlaySession } from "@/domain/play/policy";
+import { applyCorrectiveRescue,applyJudgeVerdict,beginEvaluation,completeReveal,lockPlaySession } from "@/domain/play/policy";
 import { completeSynthesisVerification,deriveRevealOutcome,skipSynthesis } from "@/domain/play/final-synthesis";
 import type { JudgeVerdict } from "@/domain/play/judgment";
 import { PlayRuleError } from "@/domain/play/errors";
 import { submitFinalSynthesis } from "@/application/play/final-synthesis";
+import { buildFinalSynthesisVerifierInput,deriveFinalSynthesisVerification,isFinalSynthesisEligible } from "@/application/play/final-synthesis-proof";
 import type { PrimaryStorePort } from "@/ports/primary-store";
 import type { FinalSynthesisVerifierInput,FinalSynthesisVerifierPort,UnvalidatedFinalSynthesisProof } from "@/ports/final-synthesis-verifier";
+import { FakeFinalSynthesisVerifierAdapter,FINAL_SYNTHESIS_FAKE_FIXTURES } from "@/adapters/fake-final-synthesis-verifier/fake-final-synthesis-verifier";
+import { makeFinalSynthesisVerifier } from "@/server/final-synthesis-verifier";
+import { toPublicSessionView } from "@/application/play/session-view";
+import { FinalSynthesisEntryFakeJudgeAdapter,FINAL_SYNTHESIS_ENTRY_FAKE_ANSWER } from "@/adapters/fake-judge/final-synthesis-entry-fake-judge";
+import { FakeJudgeAdapter } from "@/adapters/fake-judge/fake-judge";
+import { assertE2eFixtureSafety } from "../support/e2e-fixture-safety";
+import { canonicalSessionRoute } from "@/app/_components/session-routing";
 
 const legacy=approvedContentSchema.parse(rawV1);const synthesis=approvedContentSchema.parse(rawV5);
 const synthesisPolicy="final_synthesis" in synthesis.SERVER_POLICY?synthesis.SERVER_POLICY:(()=>{throw new Error("expected schema v3");})();
@@ -71,3 +79,54 @@ describe("M3 Final Synthesis provider-neutral orchestration",()=>{
     expect(JSON.stringify(recorded)).not.toContain("경계가 소통");expect(recorded).toMatchObject({evaluationGeneration:1,runs:[{purpose:"FINAL_SYNTHESIS_VERIFY",synthesisAttemptId:"00000000-0000-4000-8000-000000000099",evaluationGeneration:1}]});
   });
 });
+
+describe("M3 Final Synthesis product wiring boundaries",()=>{
+  it("guards direct E2E fixture writes with test, explicit opt-in, and loopback database authority",()=>{
+    const allowed=(databaseUrl:string)=>({APP_ENV:"test",E2E_ALLOW_DB_FIXTURES:"1",DATABASE_URL:databaseUrl});
+    const ipv4="postgresql://postgres@127.0.0.1:54322/rediscovery_e2e";
+    const localhost="postgres://postgres@localhost:54322/rediscovery_e2e";
+    expect(assertE2eFixtureSafety(allowed(ipv4))).toBe(ipv4);
+    expect(assertE2eFixtureSafety(allowed(localhost))).toBe(localhost);
+    expect(()=>assertE2eFixtureSafety({...allowed(ipv4),APP_ENV:"production"})).toThrow(/E2E_DB_FIXTURE_FORBIDDEN/);
+    expect(()=>assertE2eFixtureSafety({...allowed(ipv4),APP_ENV:"local"})).toThrow(/E2E_DB_FIXTURE_FORBIDDEN/);
+    expect(()=>assertE2eFixtureSafety({APP_ENV:"test",DATABASE_URL:ipv4})).toThrow(/E2E_DB_FIXTURE_FORBIDDEN/);
+    expect(()=>assertE2eFixtureSafety({APP_ENV:"test",E2E_ALLOW_DB_FIXTURES:"1"})).toThrow(/E2E_DB_FIXTURE_DATABASE_URL_REQUIRED/);
+    expect(()=>assertE2eFixtureSafety({...allowed(ipv4),DATABASE_URL:""})).toThrow(/E2E_DB_FIXTURE_DATABASE_URL_REQUIRED/);
+    expect(()=>assertE2eFixtureSafety({...allowed(ipv4),DATABASE_URL:"   "})).toThrow(/E2E_DB_FIXTURE_DATABASE_URL_REQUIRED/);
+    expect(()=>assertE2eFixtureSafety({...allowed(ipv4),DATABASE_URL:"not a database URL"})).toThrow(/E2E_DB_FIXTURE_DATABASE_URL_INVALID/);
+    expect(()=>assertE2eFixtureSafety(allowed("postgresql://user@example.com/rediscovery_e2e"))).toThrow(/E2E_DB_FIXTURE_REQUIRES_LOOPBACK_POSTGRES/);
+    expect(()=>assertE2eFixtureSafety(allowed("postgresql://user@192.168.1.20/rediscovery_e2e"))).toThrow(/E2E_DB_FIXTURE_REQUIRES_LOOPBACK_POSTGRES/);
+    expect(()=>assertE2eFixtureSafety(allowed("postgresql://postgres@127.0.0.1:54322/postgres"))).toThrow(/E2E_DB_FIXTURE_REQUIRES_DEDICATED_DATABASE/);
+    expect(()=>assertE2eFixtureSafety(allowed("postgresql://postgres@localhost:54322/rediscovery"))).toThrow(/E2E_DB_FIXTURE_REQUIRES_DEDICATED_DATABASE/);
+    expect(()=>assertE2eFixtureSafety(allowed("postgresql://postgres@localhost:54322"))).toThrow(/E2E_DB_FIXTURE_REQUIRES_DEDICATED_DATABASE/);
+  });
+  it("uses an exact test-only Judge fixture to reach v5 semantic eligibility",async()=>{
+    const judge=new FinalSynthesisEntryFakeJudgeAdapter(new FakeJudgeAdapter());const execution=await judge.evaluate({rubric:synthesis.JUDGE_RUBRIC,currentAnswer:FINAL_SYNTHESIS_ENTRY_FAKE_ANSWER,priorConfirmedState:[]});
+    expect(execution.verdict.nodes).toHaveLength(synthesis.JUDGE_RUBRIC.nodes.length);expect(execution.verdict.nodes.every(node=>node.status==="DISCOVERED")).toBe(true);
+  });
+  it("routes every terminal canonical session state without routing active phases",()=>{
+    expect(canonicalSessionRoute("LOCKED","s")).toBe("/reveal/s");expect(canonicalSessionRoute("REVEAL_READY","s")).toBe("/reveal/s");expect(canonicalSessionRoute("REVEALED","s")).toBe("/result/s");expect(canonicalSessionRoute("SYNTHESIZING","s")).toBeUndefined();expect(canonicalSessionRoute("THINKING","s")).toBeUndefined();expect(canonicalSessionRoute("LOCKABLE","s")).toBeUndefined();
+  });
+  it("composes the deterministic fixture only in APP_ENV=test and otherwise fails closed",async()=>{
+    expect(makeFinalSynthesisVerifier({APP_ENV:"test"})).toBeInstanceOf(FakeFinalSynthesisVerifierAdapter);
+    const unavailable=makeFinalSynthesisVerifier({APP_ENV:"local"});
+    await expect(unavailable.extractProof({requiredNodes:[],submission:{text:"x"},evidenceUnits:[]})).rejects.toMatchObject({attempts:[{resultStatus:"PROVIDER_ERROR",failureCategory:"PROVIDER_UNAVAILABLE"}]});
+  });
+  it("uses exact deterministic fixtures without exposing a semantic keyword heuristic",async()=>{
+    const verifier=new FakeFinalSynthesisVerifierAdapter();
+    const candidate=buildInput(FINAL_SYNTHESIS_FAKE_FIXTURES.VERIFIED);
+    const verified=derive(candidate,await verifier.extractProof(candidate));expect(verified).toBe(true);
+    const nearMiss=buildInput(`${FINAL_SYNTHESIS_FAKE_FIXTURES.VERIFIED} `);
+    expect(derive(nearMiss,await verifier.extractProof(nearMiss))).toBe(false);
+  });
+  it("exposes only product-safe synthesis state and permits Reveal without synthesizing a Lock",()=>{
+    const session={...fresh(),status:"SYNTHESIZING" as const,synthesisEntryReason:"DISCOVERY_READY" as const,synthesisEnteredAt:new Date("2026-09-10T00:00:00Z")};
+    const view=toPublicSessionView(session,synthesisPolicy,[],new Date("2026-09-10T00:01:00Z"));
+    expect(view.synthesis).toEqual({enabled:true,attemptsUsed:0,maxSubmissions:2,maxChars:500,evaluationInProgress:false,canSubmit:true,canRetryEvaluation:false,canSkip:true,finalRewriteRequired:false});
+    expect(JSON.stringify(view)).not.toMatch(/component|provider|model|proof/i);
+    const revealed=completeReveal({...session,status:"REVEAL_READY"});expect(revealed.status).toBe("REVEALED");expect(revealed.lockedAt).toBeUndefined();expect(revealed.verifiedSynthesisAttemptId).toBeUndefined();
+  });
+});
+
+function buildInput(text:string):FinalSynthesisVerifierInput{return buildFinalSynthesisVerifierInput(synthesisPolicy.lock_verifier.nodes.map(node=>({nodeId:node.node_id,requiredComponents:node.required_components.map(component=>({componentId:component.id,description:component.description}))})),text);}
+function derive(input:FinalSynthesisVerifierInput,execution:Awaited<ReturnType<FinalSynthesisVerifierPort["extractProof"]>>){return isFinalSynthesisEligible(deriveFinalSynthesisVerification(execution.proof,input));}

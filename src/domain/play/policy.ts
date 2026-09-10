@@ -142,6 +142,6 @@ export function lockPlaySession(session: PlaySession, policy: ServerPolicy): Pla
 }
 
 export function completeReveal(session: PlaySession): PlaySession {
-  if (session.status !== "LOCKED" && session.status !== "REVEALED") throw new PlayRuleError("REVEAL_NOT_ALLOWED");
+  if (session.status !== "LOCKED" && session.status !== "REVEAL_READY" && session.status !== "REVEALED") throw new PlayRuleError("REVEAL_NOT_ALLOWED");
   return { ...session, status: "REVEALED", revealCompleted: true };
 }

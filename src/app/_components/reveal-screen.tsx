@@ -19,7 +19,7 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
       try {
         const payload = await loadSession(sessionId);
         if (payload.session.status === "REVEALED") return router.replace(`/result/${sessionId}`);
-        if (payload.session.status !== "LOCKED") return router.replace(`/play/${sessionId}`);
+        if (payload.session.status !== "LOCKED" && payload.session.status !== "REVEAL_READY") return router.replace(`/play/${sessionId}`);
         const response = await fetch(`/api/play-sessions/${sessionId}/reveal`, { cache: "no-store" });
         if (!response.ok) throw new Error("REVEAL_NOT_ALLOWED");
         const data = await response.json() as { reveal: RevealView };
@@ -49,9 +49,9 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
 
   return (
     <main className="page-shell reveal-shell" aria-live="polite" data-reveal-step={step}>
-      <section className={`reveal-beat ${step >= 0 ? "shown" : ""}`}>
+      {reveal.representativeThought ? <section className={`reveal-beat ${step >= 0 ? "shown" : ""}`}>
         <p className="eyebrow">당신의 생각</p><blockquote>{reveal.representativeThought}</blockquote>
-      </section>
+      </section> : <section className={`reveal-beat ${step >= 0 ? "shown" : ""}`}><p className="eyebrow">오늘의 탐색</p><p>여기까지 살펴본 생각을 바탕으로 연결을 공개합니다.</p></section>}
       <div className={`rewind-line ${step >= 1 ? "shown" : ""}`}>시간을 거슬러 올라갑니다</div>
       <section className={`reveal-beat history-beat ${step >= 2 ? "shown" : ""}`}>
         <p className="reveal-year">{reveal.year}</p>

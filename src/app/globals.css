@@ -85,6 +85,14 @@ button { min-height: 48px; }
 .counter.visible { color: var(--muted); }
 .thinking-panel, .lock-panel { margin-top: 1.5rem; padding: 1.6rem; border-top: 1px solid var(--line); }
 .thinking-panel h2, .lock-panel h2 { margin: 0; font-size: 1.5rem; font-weight: 500; }
+.synthesis-panel { margin-top: 1.5rem; padding: 1.6rem; border: 1px solid var(--line); background: var(--paper); }
+.synthesis-panel h2 { margin: 0 0 .8rem; font-size: 1.5rem; font-weight: 500; line-height: 1.45; }
+.synthesis-panel > p { line-height: 1.65; word-break: keep-all; }
+.synthesis-panel .composer { position: static; margin-top: 1.25rem; box-shadow: none; }
+.synthesis-guidance { padding: 1rem; border-left: 3px solid var(--accent); background: #e8ede7; }
+.synthesis-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+.synthesis-skip { margin-top: 1rem; }
+.attempt-copy { margin-bottom: 0; color: var(--muted); font-family: Arial, "Malgun Gothic", sans-serif; font-size: .8rem; text-align: right; }
 blockquote { margin: 1.2rem 0; padding-left: 1rem; border-left: 2px solid var(--line); font-size: 1.2rem; line-height: 1.65; }
 .error-copy { color: #8b2e24; font-family: Arial, "Malgun Gothic", sans-serif; }
 .status-copy { margin-top: 40vh; text-align: center; color: var(--muted); }
@@ -112,6 +120,8 @@ blockquote { margin: 1.2rem 0; padding-left: 1rem; border-left: 2px solid var(--
   .play-shell { padding-bottom: 8rem; }
   .composer { margin-inline: -.25rem; padding: 1rem; }
   .composer-footer .primary-button { flex: 1; }
+  .synthesis-panel { padding: 1.1rem; }
+  .synthesis-actions > button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

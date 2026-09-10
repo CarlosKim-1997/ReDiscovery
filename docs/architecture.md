@@ -170,8 +170,8 @@ The new `FinalSynthesisVerifierPort` accepts only required node/component
 descriptions, one user-authored synthesis, and exact synthesis-local evidence
 units. Provider-neutral application code validates `final-synthesis-proof-v1`
 and derives support without any prior answers, Judge state, Guidance, Reveal
-data, expected labels, or historical identity. This foundation has no adapter,
-provider prompt, or model identity.
+data, expected labels, or historical identity. This foundation has no provider
+prompt or model identity.
 
 The provider-free Final Synthesis runtime core adds only persistent
 `SYNTHESIZING` and `REVEAL_READY` phases. A dedicated synthesis-attempt table owns
@@ -179,5 +179,15 @@ submission count, evaluation state, leases, generation fencing, purgeable text,
 and redacted proof. The application orchestrates reservation, an out-of-transaction
 port call, and atomic completion/recovery. Legacy `lock_answer_id` remains valid;
 verified synthesis uses a separate same-session evidence reference, and
-`locked_at` is present only for actual verified evidence. API, client DTO, UI,
-production adapter, and v5 scheduling remain deferred.
+`locked_at` is present only for actual verified evidence.
+
+The Final Synthesis product wiring exposes three server-owned commands: submit a
+new synthesis, retry the same recoverable evaluation generation, and skip to
+unverified Reveal. A client-safe projection contains only product limits and
+capabilities; proof components, provider metadata, and hidden content remain
+server-only. A deterministic exact-fixture verifier is composed only in
+`APP_ENV=test`; all non-test environments fail closed until a separately approved
+provider candidate exists. Reveal accepts both verified `LOCKED` and unverified
+`REVEAL_READY`, but only verified evidence can supply the representative thought
+or a self-discovery claim. `conway-law` v5 remains unscheduled; E2E activates it
+only through a test-owned PostgreSQL fixture rather than production selection.
