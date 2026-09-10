@@ -17,7 +17,13 @@ export default defineConfig({
   webServer: {
     command: "node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100/api/health",
-    reuseExistingServer: !process.env.CI,
+    env: {
+      ...process.env,
+      APP_ENV: "test",
+      JUDGE_ADAPTER: "fake",
+      TEST_FIXED_NOW: "2026-09-09T03:00:00.000Z",
+    },
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

@@ -38,5 +38,27 @@ describe("server configuration", () => {
 
   it("does not recognize browser-prefixed OpenAI configuration",()=>{
     expect(parseServerConfig({NEXT_PUBLIC_OPENAI_API_KEY:"leak"} as Record<string,string>)).not.toHaveProperty("NEXT_PUBLIC_OPENAI_API_KEY");
+    expect(parseServerConfig({NEXT_PUBLIC_TEST_FIXED_NOW:"leak"} as Record<string,string>)).not.toHaveProperty("NEXT_PUBLIC_TEST_FIXED_NOW");
+  });
+
+  it("accepts an ISO fixed instant only in the test environment", () => {
+    expect(parseServerConfig({
+      APP_ENV: "test",
+      TEST_FIXED_NOW: "2026-09-09T03:00:00.000Z",
+    })).toMatchObject({
+      APP_ENV: "test",
+      TEST_FIXED_NOW: "2026-09-09T03:00:00.000Z",
+    });
+  });
+
+  it("rejects invalid or non-test fixed instants without exposing values", () => {
+    expect(() => parseServerConfig({
+      APP_ENV: "test",
+      TEST_FIXED_NOW: "not-an-instant",
+    })).toThrow(/^Invalid server configuration: TEST_FIXED_NOW$/);
+    expect(() => parseServerConfig({
+      APP_ENV: "production",
+      TEST_FIXED_NOW: "2026-09-09T03:00:00.000Z",
+    })).toThrow(/^Invalid server configuration: TEST_FIXED_NOW$/);
   });
 });

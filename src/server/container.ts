@@ -1,5 +1,4 @@
 import "server-only";
-import { SystemClock } from "@/adapters/system-clock/system-clock";
 import { serverConfig } from "@/config/server";
 import type { ClockPort } from "@/ports/clock";
 import type { JudgePort } from "@/ports/judge";
@@ -9,6 +8,7 @@ import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres
 import { NodeIdentityAdapter } from "@/adapters/node-identity/node-identity";
 import type { IdentityPort } from "@/ports/identity";
 import { OpenAIJudgeAdapter, OpenAIResponsesJudgeTransport } from "@/adapters/openai-judge/openai-judge";
+import { makeClock } from "@/server/clock";
 
 function makeJudge():JudgePort {
   if(serverConfig.JUDGE_ADAPTER==="fake")return new FakeJudgeAdapter();
@@ -17,7 +17,7 @@ function makeJudge():JudgePort {
 
 /** The composition root is the only place that chooses concrete adapters. */
 export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; store: PrimaryStorePort }> = Object.freeze({
-  clock: new SystemClock(),
+  clock: makeClock(serverConfig),
   identity: new NodeIdentityAdapter(),
   judge: makeJudge(),
   store: new PostgresPrimaryStore(serverConfig.DATABASE_URL),

@@ -10,9 +10,11 @@ const serverConfigSchema = z.object({
   PRIMARY_JUDGE_MODEL: z.string().min(1).max(100).optional(),
   ADJUDICATION_MODEL: z.string().min(1).max(100).optional(),
   REVEAL_COMPARISON_MODEL: z.string().min(1).max(100).optional(),
+  TEST_FIXED_NOW: z.iso.datetime({ offset: true }).optional(),
 }).superRefine((value, context) => {
   if (value.JUDGE_ADAPTER === "openai" && !value.OPENAI_API_KEY) context.addIssue({ code: "custom", path: ["OPENAI_API_KEY"], message: "Required for OpenAI Judge" });
   if (value.JUDGE_ADAPTER === "openai" && !value.PRIMARY_JUDGE_MODEL) context.addIssue({ code: "custom", path: ["PRIMARY_JUDGE_MODEL"], message: "Required for OpenAI Judge" });
+  if (value.TEST_FIXED_NOW && value.APP_ENV !== "test") context.addIssue({ code: "custom", path: ["TEST_FIXED_NOW"], message: "Allowed only in test" });
 });
 
 export type ServerConfig = Readonly<z.infer<typeof serverConfigSchema>>;
