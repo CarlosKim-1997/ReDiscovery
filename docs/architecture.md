@@ -158,3 +158,18 @@ node support only when every required component passes. Same-answer and
 cross-answer antecedents use one canonical supplied-evidence order. Redacted
 rejected-proof diagnostics retain only enum values and unit IDs. V3 is not wired
 into runtime composition, persistence, Daily behavior, or public DTOs.
+
+The first v3 Luna development run failed its frozen acceptance contract and
+reached the architecture stop-rule. M3 therefore begins the provider-free
+foundation for the **Final Synthesis Gate** without accepting or modifying v3.
+Approved content schema version 3 extends schema v2 only with a generic,
+server-only `SERVER_POLICY.final_synthesis` policy. Development-only
+`conway-law` v5 is unscheduled and otherwise preserves v4.
+
+The new `FinalSynthesisVerifierPort` accepts only required node/component
+descriptions, one user-authored synthesis, and exact synthesis-local evidence
+units. Provider-neutral application code validates `final-synthesis-proof-v1`
+and derives support without any prior answers, Judge state, Guidance, Reveal
+data, expected labels, or historical identity. This foundation has no adapter,
+provider prompt, runtime registration, persistence, API, UI, or state-machine
+change.

@@ -17,6 +17,12 @@ const lockVerifierPolicy = z.object({
   }).strict()).min(1),
 }).strict();
 
+const finalSynthesisPolicy = z.object({
+  contract_version: z.literal("final-synthesis-v1"),
+  max_chars: z.literal(500),
+  max_submissions: z.literal(2),
+}).strict();
+
 const serverPolicyBase = {
   max_turns: z.number().int().min(1).max(10),
   required_nodes: z.array(nodeId).min(1),
@@ -59,9 +65,20 @@ const componentProofContentSchema = z.object({
   SERVER_POLICY: z.object({ ...serverPolicyBase, lock_verifier: lockVerifierPolicy }).strict(),
 }).strict();
 
+const finalSynthesisContentSchema = z.object({
+  ...commonContent,
+  schema_version: z.literal(3),
+  SERVER_POLICY: z.object({
+    ...serverPolicyBase,
+    lock_verifier: lockVerifierPolicy,
+    final_synthesis: finalSynthesisPolicy,
+  }).strict(),
+}).strict();
+
 export const approvedContentSchema = z.union([
   historicalContentSchema,
   componentProofContentSchema,
+  finalSynthesisContentSchema,
 ]).superRefine((content, context) => {
   const ids = content.JUDGE_RUBRIC.nodes.map(({ id }) => id);
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC", "nodes"], message: "Duplicate node IDs" });
@@ -71,7 +88,7 @@ export const approvedContentSchema = z.union([
   if (content.SERVER_POLICY.lock_threshold > content.SERVER_POLICY.required_nodes.length) {
     context.addIssue({ code: "custom", path: ["SERVER_POLICY", "lock_threshold"], message: "Threshold exceeds required node count" });
   }
-  if (content.schema_version === 2) {
+  if (content.schema_version === 2 || content.schema_version === 3) {
     const verifierNodes = content.SERVER_POLICY.lock_verifier.nodes;
     const verifierNodeIds = verifierNodes.map(({ node_id }) => node_id);
     if (new Set(verifierNodeIds).size !== verifierNodeIds.length) {
