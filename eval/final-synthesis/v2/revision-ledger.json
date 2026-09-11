@@ -1,0 +1,582 @@
+{
+  "schema_version": 1,
+  "dataset_version": "final-synthesis-dev-v2",
+  "entries": [
+    {
+      "v2_case_id": "fs-positive-single-01",
+      "source_v1_case_id": "fs-positive-single-01",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-02",
+      "source_v1_case_id": "fs-positive-single-02",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-03",
+      "source_v1_case_id": "fs-positive-single-03",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-04",
+      "source_v1_case_id": "fs-positive-single-04",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-05",
+      "source_v1_case_id": "fs-positive-single-05",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-06",
+      "source_v1_case_id": "fs-positive-single-06",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-07",
+      "source_v1_case_id": "fs-positive-single-07",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-08",
+      "source_v1_case_id": "fs-positive-single-08",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-09",
+      "source_v1_case_id": "fs-positive-single-09",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-10",
+      "source_v1_case_id": "fs-positive-single-10",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-11",
+      "source_v1_case_id": "fs-positive-single-11",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-12",
+      "source_v1_case_id": "fs-positive-single-12",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-13",
+      "source_v1_case_id": "fs-positive-single-13",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-14",
+      "source_v1_case_id": "fs-positive-single-14",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-15",
+      "source_v1_case_id": "fs-positive-single-15",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-single-16",
+      "source_v1_case_id": "fs-positive-single-16",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-01",
+      "source_v1_case_id": "fs-positive-multi-01",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-02",
+      "source_v1_case_id": "fs-positive-multi-02",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-03",
+      "source_v1_case_id": "fs-positive-multi-03",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-04",
+      "source_v1_case_id": "fs-positive-multi-04",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-05",
+      "source_v1_case_id": "fs-positive-multi-05",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-06",
+      "source_v1_case_id": "fs-positive-multi-06",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-07",
+      "source_v1_case_id": "fs-positive-multi-07",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-08",
+      "source_v1_case_id": "fs-positive-multi-08",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-09",
+      "source_v1_case_id": "fs-positive-multi-09",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-10",
+      "source_v1_case_id": "fs-positive-multi-10",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-11",
+      "source_v1_case_id": "fs-positive-multi-11",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-12",
+      "source_v1_case_id": "fs-positive-multi-12",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-13",
+      "source_v1_case_id": "fs-positive-multi-13",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-14",
+      "source_v1_case_id": "fs-positive-multi-14",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-15",
+      "source_v1_case_id": "fs-positive-multi-15",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-positive-multi-16",
+      "source_v1_case_id": "fs-positive-multi-16",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-01",
+      "source_v1_case_id": "fs-negative-single-01",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-02",
+      "source_v1_case_id": "fs-negative-single-02",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-03",
+      "source_v1_case_id": "fs-negative-single-03",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-04",
+      "source_v1_case_id": "fs-negative-single-04",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-05",
+      "source_v1_case_id": "fs-negative-single-05",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-06",
+      "source_v1_case_id": "fs-negative-single-06",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-07",
+      "source_v1_case_id": "fs-negative-single-07",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-08",
+      "source_v1_case_id": "fs-negative-single-08",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-09",
+      "source_v1_case_id": "fs-negative-single-09",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-10",
+      "source_v1_case_id": "fs-negative-single-10",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-11",
+      "source_v1_case_id": "fs-negative-single-11",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-12",
+      "source_v1_case_id": "fs-negative-single-12",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-13",
+      "source_v1_case_id": "fs-negative-single-13",
+      "status": "REWRITTEN",
+      "semantic_reason": "완전한 quoted relation shape가 endorsement와 독립임을 검증한다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-14",
+      "source_v1_case_id": "fs-negative-single-14",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-15",
+      "source_v1_case_id": "fs-negative-single-15",
+      "status": "REWRITTEN",
+      "semantic_reason": "The abandoned complete proposition and current endorsed replacement are made explicit and independently annotatable."
+    },
+    {
+      "v2_case_id": "fs-negative-single-16",
+      "source_v1_case_id": "fs-negative-single-16",
+      "status": "REWRITTEN",
+      "semantic_reason": "Text is rewritten so the canonical proposition-selection rule yields one independent proof-v2 annotation."
+    },
+    {
+      "v2_case_id": "fs-negative-single-17",
+      "source_v1_case_id": "fs-negative-single-17",
+      "status": "REWRITTEN",
+      "semantic_reason": "한 synthesis unit 안의 두 plausible antecedent 때문에 reference가 ambiguous한 사례다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-18",
+      "source_v1_case_id": "fs-negative-single-18",
+      "status": "REWRITTEN",
+      "semantic_reason": "완전한 local relation shape가 unresolved reference와 독립임을 검증한다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-19",
+      "source_v1_case_id": "fs-negative-single-19",
+      "status": "REWRITTEN",
+      "semantic_reason": "외부 맥락에만 의존하는 complete relation shape는 unresolved다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-20",
+      "source_v1_case_id": "fs-negative-single-20",
+      "status": "REWRITTEN",
+      "semantic_reason": "필수 component proposition이 전혀 없는 canonical NO_COMPONENT_SUPPORT 사례다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-21",
+      "source_v1_case_id": "fs-negative-single-21",
+      "status": "REWRITTEN",
+      "semantic_reason": "Text is rewritten so the canonical proposition-selection rule yields one independent proof-v2 annotation."
+    },
+    {
+      "v2_case_id": "fs-negative-single-22",
+      "source_v1_case_id": "fs-negative-single-22",
+      "status": "REWRITTEN",
+      "semantic_reason": "Text is rewritten so the canonical proposition-selection rule yields one independent proof-v2 annotation."
+    },
+    {
+      "v2_case_id": "fs-negative-single-23",
+      "source_v1_case_id": "fs-negative-single-23",
+      "status": "REWRITTEN",
+      "semantic_reason": "Text is rewritten so the canonical proposition-selection rule yields one independent proof-v2 annotation."
+    },
+    {
+      "v2_case_id": "fs-negative-single-24",
+      "source_v1_case_id": "fs-negative-single-24",
+      "status": "REWRITTEN",
+      "semantic_reason": "단순 동석과 대화 사실은 소통 차이에 따른 actor grouping이나 source boundary가 아니다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-25",
+      "source_v1_case_id": "fs-negative-single-25",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-26",
+      "source_v1_case_id": "fs-negative-single-26",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-27",
+      "source_v1_case_id": "fs-negative-single-27",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-28",
+      "source_v1_case_id": "fs-negative-single-28",
+      "status": "REWRITTEN",
+      "semantic_reason": "The relation is rewritten as an explicit partial mapping so PARTIAL_COMPONENT_MATCH has one unambiguous gold."
+    },
+    {
+      "v2_case_id": "fs-negative-single-29",
+      "source_v1_case_id": "fs-negative-single-29",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-30",
+      "source_v1_case_id": "fs-negative-single-30",
+      "status": "REWRITTEN",
+      "semantic_reason": "source-to-output structural correspondence와 반대 방향의 명시적 인과를 검증한다."
+    },
+    {
+      "v2_case_id": "fs-negative-single-31",
+      "source_v1_case_id": "fs-negative-single-31",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-single-32",
+      "source_v1_case_id": "fs-negative-single-32",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-01",
+      "source_v1_case_id": "fs-negative-multi-01",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-02",
+      "source_v1_case_id": "fs-negative-multi-02",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-03",
+      "source_v1_case_id": "fs-negative-multi-03",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-04",
+      "source_v1_case_id": "fs-negative-multi-04",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-05",
+      "source_v1_case_id": "fs-negative-multi-05",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-06",
+      "source_v1_case_id": "fs-negative-multi-06",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-07",
+      "source_v1_case_id": "fs-negative-multi-07",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-08",
+      "source_v1_case_id": "fs-negative-multi-08",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-09",
+      "source_v1_case_id": "fs-negative-multi-09",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-10",
+      "source_v1_case_id": "fs-negative-multi-10",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-11",
+      "source_v1_case_id": "fs-negative-multi-11",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-12",
+      "source_v1_case_id": "fs-negative-multi-12",
+      "status": "REWRITTEN",
+      "semantic_reason": "폐기된 명제와 현재의 명시적 self-contained replacement를 분리해 correction endorsement를 검증한다."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-13",
+      "source_v1_case_id": "fs-negative-multi-13",
+      "status": "REWRITTEN",
+      "semantic_reason": "Text is rewritten so the canonical proposition-selection rule yields one independent proof-v2 annotation."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-14",
+      "source_v1_case_id": "fs-negative-multi-14",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-15",
+      "source_v1_case_id": "fs-negative-multi-15",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-16",
+      "source_v1_case_id": "fs-negative-multi-16",
+      "status": "REWRITTEN",
+      "semantic_reason": "폐기된 proposition과 현재 endorsed replacement를 명확히 분리한다."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-17",
+      "source_v1_case_id": "fs-negative-multi-17",
+      "status": "REPLACEMENT",
+      "semantic_reason": "A Guidance-dependent case is replaced by an unambiguous two-antecedent reference test for proof-v2 orthogonality."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-18",
+      "source_v1_case_id": "fs-negative-multi-18",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-19",
+      "source_v1_case_id": "fs-negative-multi-19",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-20",
+      "source_v1_case_id": "fs-negative-multi-20",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-21",
+      "source_v1_case_id": "fs-negative-multi-21",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-22",
+      "source_v1_case_id": "fs-negative-multi-22",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-23",
+      "source_v1_case_id": "fs-negative-multi-23",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-24",
+      "source_v1_case_id": "fs-negative-multi-24",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-25",
+      "source_v1_case_id": "fs-negative-multi-25",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-26",
+      "source_v1_case_id": "fs-negative-multi-26",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-27",
+      "source_v1_case_id": "fs-negative-multi-27",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-28",
+      "source_v1_case_id": "fs-negative-multi-28",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-29",
+      "source_v1_case_id": "fs-negative-multi-29",
+      "status": "REWRITTEN",
+      "semantic_reason": "generic causation만 있고 source/output constituent가 명시되지 않은 사례다."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-30",
+      "source_v1_case_id": "fs-negative-multi-30",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-31",
+      "source_v1_case_id": "fs-negative-multi-31",
+      "status": "REWRITTEN",
+      "semantic_reason": "완전한 quoted relation의 content match와 비승인 endorsement를 분리한다."
+    },
+    {
+      "v2_case_id": "fs-negative-multi-32",
+      "source_v1_case_id": "fs-negative-multi-32",
+      "status": "UNCHANGED_TEXT_REANNOTATED",
+      "semantic_reason": "Text is retained while the complete five-component proof-v2 gold projection adds evaluation-authority annotations under the orthogonal contract."
+    }
+  ]
+}

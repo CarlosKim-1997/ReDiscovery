@@ -191,3 +191,11 @@ provider candidate exists. Reveal accepts both verified `LOCKED` and unverified
 `REVEAL_READY`, but only verified evidence can supply the representative thought
 or a self-discovery claim. `conway-law` v5 remains unscheduled; E2E activates it
 only through a test-owned PostgreSQL fixture rather than production selection.
+
+The development-only Final Synthesis verifier v2 is a separate, non-runtime
+line. Its proof contract makes endorsement, synthesis-local reference resolution,
+and component-local semantic shape orthogonal; canonical no-support records use
+`NOT_APPLICABLE` and empty evidence. Its evaluator retains redacted proof facts
+and every operational attempt, including recovered validation failures. V1 live
+evidence remains immutable, v2 has no selected candidate model, and production
+composition remains unchanged.
