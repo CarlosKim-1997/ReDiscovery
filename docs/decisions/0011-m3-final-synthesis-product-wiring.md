@@ -1,6 +1,7 @@
 # 0011 — M3 Final Synthesis Product Wiring
 
-**Status:** Provider-free local implementation; commit audit and hosted CI pending.
+**Status:** Accepted; hosted `M3 deterministic checks` passed at
+`08fb837fee4f828ec82ed12fb08ee1b03a400a79`.
 
 ## Decision
 

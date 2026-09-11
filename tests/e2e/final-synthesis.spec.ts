@@ -17,7 +17,7 @@ async function openFixture(page: Page, initialState: "THINKING" | "SYNTHESIZING"
     await sql.begin(async transaction => {
       const [content] = await transaction<{ id: string }[]>`SELECT v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE i.slug='conway-law' AND v.version=5`;
       if (!content) throw new Error("CONWAY_V5_NOT_SEEDED");
-      await transaction`INSERT INTO daily_schedule(canonical_date,sequence_number,release_at,content_version_id) VALUES(${fixtureDate},999999,${`${fixtureDate}T00:00:00+09:00`},${content.id}) ON CONFLICT(canonical_date) DO NOTHING`;
+      await transaction`INSERT INTO daily_schedule(canonical_date,sequence_number,release_at,content_version_id) VALUES(${fixtureDate},999999,${`${fixtureDate}T00:00:00+09:00`},${content.id}) ON CONFLICT DO NOTHING`;
       const [daily] = await transaction<{ id: string }[]>`SELECT id FROM daily_schedule WHERE canonical_date=${fixtureDate} AND content_version_id=${content.id}`;
       if (!daily) throw new Error("V5_E2E_DAILY_CONFLICT");
       await transaction`INSERT INTO anonymous_devices(id,token_hash) VALUES(${deviceId},${tokenHash})`;
@@ -37,6 +37,11 @@ async function openFixture(page: Page, initialState: "THINKING" | "SYNTHESIZING"
 }
 
 async function openSynthesis(page:Page){const sessionId=await openFixture(page,"SYNTHESIZING");await expect(page.getByRole("heading",{name:"이제 당신이 발견한 원리를 스스로 정리해보세요."})).toBeVisible();return sessionId;}
+
+test("parallel v5 fixture creation is idempotent across date and sequence constraints",async()=>{
+  const ids=await Promise.all(Array.from({length:8},async()=>{const sql=postgres(databaseUrl,{max:1});try{return await sql.begin(async transaction=>{const [content]=await transaction<{id:string}[]>`SELECT v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE i.slug='conway-law' AND v.version=5`;if(!content)throw new Error("CONWAY_V5_NOT_SEEDED");await transaction`INSERT INTO daily_schedule(canonical_date,sequence_number,release_at,content_version_id) VALUES(${fixtureDate},999999,${`${fixtureDate}T00:00:00+09:00`},${content.id}) ON CONFLICT DO NOTHING`;const [daily]=await transaction<{id:string}[]>`SELECT id FROM daily_schedule WHERE canonical_date=${fixtureDate} AND sequence_number=999999 AND content_version_id=${content.id}`;if(!daily)throw new Error("V5_E2E_DAILY_CONFLICT");return daily.id})}finally{await sql.end()}}));
+  expect(new Set(ids).size).toBe(1);
+});
 
 async function submitSynthesis(page: Page, text: string) {
   await page.getByLabel("당신의 마지막 정리").fill(text);
