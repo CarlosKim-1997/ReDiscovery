@@ -3,7 +3,7 @@
   "prompt_version": "final-synthesis-verify-v2",
   "proof_contract_version": "final-synthesis-proof-v2",
   "product_contract_version": "final-synthesis-v1",
-  "evaluator_version": "final-synthesis-eval-v2",
+  "evaluator_version": "final-synthesis-eval-v2.1",
   "content_slug": "conway-law",
   "content_version": 5,
   "expected_case_count": 96,
