@@ -11,7 +11,8 @@ import {
 import { JudgeExecutionError } from "@/ports/judge";
 import {
   getJudgeSystemPrompt, JUDGE_V2_PROMPT_VERSION, JUDGE_V2_SYSTEM_PROMPT,
-  JUDGE_V3_PROMPT_VERSION, JUDGE_V3_SYSTEM_PROMPT, PRIMARY_JUDGE_PROMPT_VERSION, PRIMARY_JUDGE_SYSTEM_PROMPT,
+  JUDGE_V1_PROMPT_VERSION, JUDGE_V1_SYSTEM_PROMPT, JUDGE_V3_PROMPT_VERSION, JUDGE_V3_SYSTEM_PROMPT,
+  PRIMARY_JUDGE_PROMPT_VERSION, PRIMARY_JUDGE_SYSTEM_PROMPT,
 } from "@/shared/judge-prompts";
 import { JudgeVerdictValidationError } from "@/application/play/judge-verdict";
 
@@ -31,18 +32,20 @@ const run=(transport:ScriptedTransport,currentAnswer=answer)=>new OpenAIJudgeAda
 describe("M3 OpenAI Judge adapter",()=>{
   it("forces SDK logging off even when OPENAI_LOG requests debug output",()=>{const previous=process.env.OPENAI_LOG;process.env.OPENAI_LOG="debug";try{expect(buildOpenAIJudgeClientOptions("secret")).toMatchObject({apiKey:"secret",maxRetries:0,logLevel:"off"});const transport=new OpenAIResponsesJudgeTransport("secret");expect((transport as unknown as {client:{logLevel:string}}).client.logLevel).toBe("off");}finally{if(previous===undefined)delete process.env.OPENAI_LOG;else process.env.OPENAI_LOG=previous;}});
   it("uses the configured model, Structured Outputs, and explicitly disables Responses API storage",()=>{const request=buildOpenAIResponseRequest({model:"configured-primary-model",promptVersion:PRIMARY_JUDGE_PROMPT_VERSION,systemPrompt:"classifier",input:"synthetic fixture",expectedNodeIds:ids});expect(request.model).toBe("configured-primary-model");expect(request.text.format).toBeDefined();expect(Object.hasOwn(request,"store")).toBe(true);expect(request.store).toBe(false);expect(request.tools).toEqual([]);expect(request.tool_choice).toBe("none");});
-  it("keeps immutable v1 available and makes v2 explicitly addressable",async()=>{
-    expect(createHash("sha256").update(PRIMARY_JUDGE_SYSTEM_PROMPT).digest("hex")).toBe("37981f9cd17d4e7a72c54c9d7269548e8eb2928175d5a3e9448ecfbe52614aaa");
+  it("keeps historical prompts addressable and defaults production to frozen v3",async()=>{
+    expect(createHash("sha256").update(JUDGE_V1_SYSTEM_PROMPT).digest("hex")).toBe("37981f9cd17d4e7a72c54c9d7269548e8eb2928175d5a3e9448ecfbe52614aaa");
+    expect(getJudgeSystemPrompt(JUDGE_V1_PROMPT_VERSION)).toBe(JUDGE_V1_SYSTEM_PROMPT);
     expect(getJudgeSystemPrompt(PRIMARY_JUDGE_PROMPT_VERSION)).toBe(PRIMARY_JUDGE_SYSTEM_PROMPT);
     expect(getJudgeSystemPrompt(JUDGE_V2_PROMPT_VERSION)).toBe(JUDGE_V2_SYSTEM_PROMPT);
     expect(JUDGE_V2_SYSTEM_PROMPT).toMatch(/Hedging.*does not make a complete proposition PARTIAL/);
     expect(JUDGE_V2_SYSTEM_PROMPT).toMatch(/priorConfirmedState.*must never upgrade, downgrade, or fabricate/);
     expect(JUDGE_V2_SYSTEM_PROMPT).toMatch(/shortest sufficient unique literal evidenceText/);
-    const defaultTransport=new ScriptedTransport([valid]);await run(defaultTransport);expect(defaultTransport.requests[0]).toMatchObject({promptVersion:"judge-v1",systemPrompt:PRIMARY_JUDGE_SYSTEM_PROMPT});
+    expect(PRIMARY_JUDGE_PROMPT_VERSION).toBe("judge-v3");
+    const defaultTransport=new ScriptedTransport([valid]);await run(defaultTransport);expect(defaultTransport.requests[0]).toMatchObject({promptVersion:"judge-v3",systemPrompt:JUDGE_V3_SYSTEM_PROMPT});
     const v2Transport=new ScriptedTransport([valid]);await new OpenAIJudgeAdapter(v2Transport,"candidate-model",()=>0,JUDGE_V2_PROMPT_VERSION).evaluate({rubric,currentAnswer:answer,priorConfirmedState:[]});expect(v2Transport.requests[0]).toMatchObject({promptVersion:"judge-v2",systemPrompt:JUDGE_V2_SYSTEM_PROMPT});
     const v3Transport=new ScriptedTransport([valid]);await new OpenAIJudgeAdapter(v3Transport,"candidate-model",()=>0,JUDGE_V3_PROMPT_VERSION).evaluate({rubric,currentAnswer:answer,priorConfirmedState:[]});expect(v3Transport.requests[0]).toMatchObject({promptVersion:"judge-v3",systemPrompt:JUDGE_V3_SYSTEM_PROMPT});
   });
-  it("pins frozen v2 and keeps v3 at least 15 percent smaller",()=>{expect(createHash("sha256").update(JUDGE_V2_SYSTEM_PROMPT).digest("hex")).toBe("71bf51a99a52301ea0fed0c7ab47c74e47651d0a9f19295ce1193ff1b5c821b7");expect(Buffer.byteLength(JUDGE_V3_SYSTEM_PROMPT)).toBeLessThanOrEqual(Math.floor(Buffer.byteLength(JUDGE_V2_SYSTEM_PROMPT)*0.85));});
+  it("pins frozen v2 and v3 bytes while keeping v3 at least 15 percent smaller",()=>{expect(createHash("sha256").update(JUDGE_V2_SYSTEM_PROMPT).digest("hex")).toBe("71bf51a99a52301ea0fed0c7ab47c74e47651d0a9f19295ce1193ff1b5c821b7");expect(createHash("sha256").update(JUDGE_V3_SYSTEM_PROMPT).digest("hex")).toBe("b53c1955a225e44a3fd2e40c98fbd07ab413d0e73d325fbaf49650899a3a927f");expect(Buffer.byteLength(JUDGE_V3_SYSTEM_PROMPT)).toBeLessThanOrEqual(Math.floor(Buffer.byteLength(JUDGE_V2_SYSTEM_PROMPT)*0.85));});
   it("builds a strict schema covering every rubric node",()=>{const schema=buildProviderVerdictSchema(ids);expect(schema.safeParse(valid).success).toBe(true);expect(schema.safeParse({...valid,nodes:valid.nodes.slice(1)}).success).toBe(false);expect(schema.safeParse({...valid,nodes:[...valid.nodes,{nodeId:"UNKNOWN",status:"ABSENT",evidenceText:null}]}).success).toBe(false);});
   it("maps structured output and records provider metadata",async()=>{const transport=new ScriptedTransport([valid]);const execution=await run(transport);expect(execution.verdict.nodes).toHaveLength(ids.length);expect(execution.attempts[0]).toMatchObject({provider:"openai",model:"candidate-model",promptVersion:PRIMARY_JUDGE_PROMPT_VERSION,schemaValid:true,totalTokens:15,providerRequestId:"req-1"});expect(transport.requests).toHaveLength(1);});
   it.each([

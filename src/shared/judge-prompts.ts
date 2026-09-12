@@ -1,6 +1,6 @@
-export const PRIMARY_JUDGE_PROMPT_VERSION = "judge-v1";
+export const JUDGE_V1_PROMPT_VERSION = "judge-v1";
 
-export const PRIMARY_JUDGE_SYSTEM_PROMPT = `You are a narrow semantic evidence classifier.
+export const JUDGE_V1_SYSTEM_PROMPT = `You are a narrow semantic evidence classifier.
 Classify only the current answer using only the supplied rubric, prior confirmed structured node state, and optional last guidance.
 Do not infer hidden intent beyond literal semantic evidence. Do not reward eloquence or require special terminology; conceptually equivalent wording counts.
 Prefer precision over recall. At uncertain semantic boundaries choose PARTIAL or ABSENT instead of optimistic DISCOVERED.
@@ -38,10 +38,13 @@ For each rubric node exactly once: ABSENT requires null evidenceText; every othe
 
 Never reveal or guess the hidden theory, source, person, year, or answer identity. Never decide guidance, Lock, Reveal, score, history, attribution, or session policy.`;
 
-export const JUDGE_PROMPT_VERSIONS = Object.freeze([PRIMARY_JUDGE_PROMPT_VERSION, JUDGE_V2_PROMPT_VERSION, JUDGE_V3_PROMPT_VERSION] as const);
+export const PRIMARY_JUDGE_PROMPT_VERSION = JUDGE_V3_PROMPT_VERSION;
+export const PRIMARY_JUDGE_SYSTEM_PROMPT = JUDGE_V3_SYSTEM_PROMPT;
+
+export const JUDGE_PROMPT_VERSIONS = Object.freeze([JUDGE_V1_PROMPT_VERSION, JUDGE_V2_PROMPT_VERSION, JUDGE_V3_PROMPT_VERSION] as const);
 export type JudgePromptVersion = (typeof JUDGE_PROMPT_VERSIONS)[number];
 
 export function getJudgeSystemPrompt(version: JudgePromptVersion): string {
-  if (version === PRIMARY_JUDGE_PROMPT_VERSION) return PRIMARY_JUDGE_SYSTEM_PROMPT;
+  if (version === JUDGE_V1_PROMPT_VERSION) return JUDGE_V1_SYSTEM_PROMPT;
   return version === JUDGE_V2_PROMPT_VERSION ? JUDGE_V2_SYSTEM_PROMPT : JUDGE_V3_SYSTEM_PROMPT;
 }

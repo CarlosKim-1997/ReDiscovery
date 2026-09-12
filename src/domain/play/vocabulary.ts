@@ -54,3 +54,21 @@ export const AMBIGUITIES = Object.freeze([
   "SEMANTIC_BOUNDARY",
 ] as const);
 export type Ambiguity = (typeof AMBIGUITIES)[number];
+
+export const LEARNER_STATES = Object.freeze([
+  "OFF_TRACK",
+  "MISCONCEPTION",
+  "ON_TRACK",
+  "NEAR_COMPLETE",
+  "COMPLETE_LIKELY",
+] as const);
+export type LearnerState = (typeof LEARNER_STATES)[number];
+
+export const GUIDANCE_ACTIONS = Object.freeze([
+  "REDIRECT",
+  "CORRECT",
+  "TARGET",
+  "BRIDGE",
+  "CONSOLIDATE",
+] as const);
+export type GuidanceAction = (typeof GUIDANCE_ACTIONS)[number];

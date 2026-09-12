@@ -199,3 +199,14 @@ and component-local semantic shape orthogonal; canonical no-support records use
 and every operational attempt, including recovered validation failures. V1 live
 evidence remains immutable, v2 has no selected candidate model, and production
 composition remains unchanged.
+
+M4-A adds a provider-free Adaptive Guidance foundation without changing gameplay
+or persistence. A pure domain resolver derives learner state from accumulated
+semantic node state and reuses the existing semantic-lock eligibility rule. A
+second pure selector maps that state to a deterministic guidance action, target
+node, and approved content text. Conway v6 uses approved content schema v4 and is
+unscheduled; it adds only the server-owned `adaptive_guidance` policy and omits the
+research-era Lock Verifier and Final Synthesis policies. The OpenAI Judge adapter's
+default prompt now selects the already-evaluated, byte-preserved `judge-v3`.
+HTTP/API flow, the existing `GuidanceEvent`, session persistence, provider
+readiness, pause/resume, and Turn 2 transitions remain unchanged for M4-B.

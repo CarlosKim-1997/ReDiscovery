@@ -3,12 +3,16 @@ import {
   AMBIGUITIES,
   ANSWER_TYPES,
   ATTEMPT_TYPES,
+  GUIDANCE_ACTIONS,
+  LEARNER_STATES,
   NODE_STATUSES,
   PLAY_STAGES,
   PLAY_STATUSES,
   type Ambiguity,
   type AnswerType,
   type AttemptType,
+  type GuidanceAction,
+  type LearnerState,
   type NodeStatus,
   type PlayStage,
   type PlayStatus,
@@ -24,6 +28,8 @@ const canonical = {
   AnswerType: ["REASONING", "OFF_TOPIC", "ASKING_FOR_ANSWER", "META", "EMPTY"],
   Ambiguity: ["NONE", "TOO_SHORT", "UNCLEAR_REFERENCE", "CONFLICTING_CLAIMS", "SEMANTIC_BOUNDARY"],
   ComparisonStatus: ["NOT_REQUESTED", "PENDING", "READY", "FALLBACK_USED", "FAILED"],
+  LearnerState: ["OFF_TRACK", "MISCONCEPTION", "ON_TRACK", "NEAR_COMPLETE", "COMPLETE_LIKELY"],
+  GuidanceAction: ["REDIRECT", "CORRECT", "TARGET", "BRIDGE", "CONSOLIDATE"],
 } as const;
 
 const actual = {
@@ -34,6 +40,8 @@ const actual = {
   AnswerType: ANSWER_TYPES,
   Ambiguity: AMBIGUITIES,
   ComparisonStatus: COMPARISON_STATUSES,
+  LearnerState: LEARNER_STATES,
+  GuidanceAction: GUIDANCE_ACTIONS,
 };
 
 describe("canonical domain vocabulary", () => {
@@ -53,5 +61,7 @@ describe("canonical domain vocabulary", () => {
     expectTypeOf<AnswerType>().toEqualTypeOf<(typeof canonical.AnswerType)[number]>();
     expectTypeOf<Ambiguity>().toEqualTypeOf<(typeof canonical.Ambiguity)[number]>();
     expectTypeOf<ComparisonStatus>().toEqualTypeOf<(typeof canonical.ComparisonStatus)[number]>();
+    expectTypeOf<LearnerState>().toEqualTypeOf<(typeof canonical.LearnerState)[number]>();
+    expectTypeOf<GuidanceAction>().toEqualTypeOf<(typeof canonical.GuidanceAction)[number]>();
   });
 });

@@ -23,6 +23,20 @@ const finalSynthesisPolicy = z.object({
   max_submissions: z.literal(2),
 }).strict();
 
+const adaptiveGuidanceEntry = z.object({
+  target: z.string().trim().min(1),
+  bridge: z.string().trim().min(1),
+  correction: z.string().trim().min(1),
+}).strict();
+
+const adaptiveGuidancePolicy = z.object({
+  contract_version: z.literal("adaptive-guidance-v1"),
+  concept_order: z.array(nodeId).min(1),
+  redirect: z.string().trim().min(1),
+  consolidate: z.string().trim().min(1),
+  by_node: z.record(nodeId, adaptiveGuidanceEntry),
+}).strict();
+
 const serverPolicyBase = {
   max_turns: z.number().int().min(1).max(10),
   required_nodes: z.array(nodeId).min(1),
@@ -75,10 +89,21 @@ const finalSynthesisContentSchema = z.object({
   }).strict(),
 }).strict();
 
+const adaptiveGuidanceContentSchema = z.object({
+  ...commonContent,
+  schema_version: z.literal(4),
+  SERVER_POLICY: z.object({
+    ...serverPolicyBase,
+    max_turns: z.literal(2),
+    adaptive_guidance: adaptiveGuidancePolicy,
+  }).strict(),
+}).strict();
+
 export const approvedContentSchema = z.union([
   historicalContentSchema,
   componentProofContentSchema,
   finalSynthesisContentSchema,
+  adaptiveGuidanceContentSchema,
 ]).superRefine((content, context) => {
   const ids = content.JUDGE_RUBRIC.nodes.map(({ id }) => id);
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC", "nodes"], message: "Duplicate node IDs" });
@@ -114,8 +139,46 @@ export const approvedContentSchema = z.union([
       }
     }
   }
+  if (content.schema_version === 4) {
+    const adaptive = content.SERVER_POLICY.adaptive_guidance;
+    const order = adaptive.concept_order;
+    if (new Set(order).size !== order.length) {
+      context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "concept_order"], message: "Duplicate adaptive guidance concept" });
+    }
+    for (const concept of order) {
+      if (!ids.includes(concept)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "concept_order"], message: `Unknown adaptive guidance concept: ${concept}` });
+      }
+    }
+    for (const requiredNode of content.SERVER_POLICY.required_nodes) {
+      if (order.filter((concept) => concept === requiredNode).length !== 1) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "concept_order"], message: `Required concept must appear exactly once: ${requiredNode}` });
+      }
+    }
+    for (const concept of order) {
+      if (!content.SERVER_POLICY.required_nodes.includes(concept)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "concept_order"], message: `Adaptive guidance concept is not required: ${concept}` });
+      }
+    }
+    const ladderNodeIds = Object.keys(adaptive.by_node);
+    for (const concept of order) {
+      if (!ladderNodeIds.includes(concept)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "by_node"], message: `Missing adaptive guidance ladder: ${concept}` });
+      }
+    }
+    for (const ladderNode of ladderNodeIds) {
+      if (!order.includes(ladderNode)) {
+        context.addIssue({ code: "custom", path: ["SERVER_POLICY", "adaptive_guidance", "by_node"], message: `Unknown adaptive guidance ladder: ${ladderNode}` });
+      }
+    }
+  }
   const forbidden = [content.REVEAL_CONTENT.theory, content.REVEAL_CONTENT.person, content.REVEAL_CONTENT.year, ...(content.SERVER_POLICY.recognition_aliases ?? [])];
-  for (const [layer, value] of [["PUBLIC_PLAY", content.PUBLIC_PLAY], ["JUDGE_RUBRIC", content.JUDGE_RUBRIC]] as const) {
+  const guardedLayers: readonly (readonly [string, unknown])[] = [
+    ["PUBLIC_PLAY", content.PUBLIC_PLAY],
+    ["JUDGE_RUBRIC", content.JUDGE_RUBRIC],
+    ...(content.schema_version === 4 ? [["ADAPTIVE_GUIDANCE", content.SERVER_POLICY.adaptive_guidance] as const] : []),
+  ];
+  for (const [layer, value] of guardedLayers) {
     const serialized = JSON.stringify(value).toLocaleLowerCase("en-US");
     for (const identity of forbidden) if (serialized.includes(identity.toLocaleLowerCase("en-US"))) {
       context.addIssue({ code: "custom", path: [layer], message: `${layer} leaks Reveal identity or recognition value` });
@@ -140,6 +203,7 @@ export type DailySchedule = Readonly<z.infer<typeof dailyScheduleSchema>>;
 export type PublicPlay = ApprovedContent["PUBLIC_PLAY"];
 export type JudgeRubric = ApprovedContent["JUDGE_RUBRIC"];
 export type ServerPolicy = ApprovedContent["SERVER_POLICY"];
+export type AdaptiveGuidancePolicy = Readonly<z.infer<typeof adaptiveGuidancePolicy>>;
 export type RevealContent = ApprovedContent["REVEAL_CONTENT"];
 
 export interface ContentVersion {

@@ -55,5 +55,6 @@ semantic-sensor definition established by
 supersedes the earlier Final Holdout closure requirement only for the current
 Runtime v1 product milestone; it does not rewrite or pass any historical verifier
 experiment. Final Synthesis remains a preserved research asset and replacement
-seam. M4 Adaptive Guidance Runtime is next but not implemented. M5 and later
-behavior remains out of scope.
+seam. M4 is open: M4-A contains only the provider-free learner-state, approved Hint
+Ladder, and default `judge-v3` foundation. M4-B Two-Turn Runtime Wiring is next and
+not implemented. M5 and later behavior remains out of scope.
