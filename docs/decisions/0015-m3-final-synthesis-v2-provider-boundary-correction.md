@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted locally as a provider-free M3 corrective candidate. Independent audit,
-promotion to `main`, and hosted verification remain required.
+Accepted and closed after independent audit, exact-SHA promotion to `main`, and
+hosted verification. This decision still authorizes no provider call.
 
 ## Context
 
@@ -50,8 +50,8 @@ over evaluated cases. Operational failures continue to fail closed.
 
 ## Consequences
 
-This ADR authorizes no provider smoke, Luna rerun, new run contract, candidate
-selection, Final Holdout work, or production runtime activation. M3 remains open.
-After independent audit and hosted verification, the sequence is a new corrected
-contract freeze, independent contract audit, separately authorized minimal smoke,
-and only then a separately authorized complete development run.
+This ADR authorized no provider smoke, Luna rerun, Final Holdout work, or production
+runtime activation. Its corrected v2.1 Luna contract was subsequently frozen and
+independently audited at commit `488f26d5`. A tracked, audited one-request harness
+is the next dependency before any separately authorized provider smoke. The
+complete development run remains separately gated, and M3 remains open.

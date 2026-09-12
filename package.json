@@ -26,6 +26,7 @@
     "eval:lock-verifier:v3": "node tooling/check-runtime.mjs && vitest run --config vitest.lock-verifier-v3-eval.config.mts",
     "eval:final-synthesis:preflight": "node tooling/check-runtime.mjs && vitest run --config vitest.final-synthesis-eval.config.mts tests/eval/final-synthesis-preflight.test.ts",
     "eval:final-synthesis:v2:preflight": "node tooling/check-runtime.mjs && vitest run --config vitest.final-synthesis-eval.config.mts tests/eval/final-synthesis-v2-preflight.test.ts",
+    "eval:final-synthesis:v2:smoke": "node tooling/check-runtime.mjs && vitest run --config vitest.final-synthesis-eval.config.mts tests/eval/final-synthesis-v2-smoke-real.test.ts",
     "eval:final-synthesis:v2": "node tooling/check-runtime.mjs && vitest run --config vitest.final-synthesis-eval.config.mts tests/eval/final-synthesis-v2-real.test.ts",
     "eval:final-synthesis": "node tooling/check-runtime.mjs && vitest run --config vitest.final-synthesis-eval.config.mts tests/eval/final-synthesis-real.test.ts",
     "lint": "node tooling/check-runtime.mjs && eslint . --max-warnings=0",
