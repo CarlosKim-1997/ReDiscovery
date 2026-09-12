@@ -1,7 +1,10 @@
-# G1 — M3 Judge Evaluation and Semantic Calibration
+# G1 — M4 Adaptive Guidance Runtime (next)
 
-G1 Master Codex Handoff Packet v1이 canonical implementation specification이다.
-현재 구현 범위는 **M3까지**이며 M4 이상 기능은 포함하지 않는다. `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
+G1 Master Codex Handoff Packet v1과 후속 제품 방향 결정인
+[ADR 0017](docs/decisions/0017-product-runtime-v1-adaptive-guidance.md)이 현재
+authority chain이다. M3 Judge / Semantic Sensor는 제품 적합성 기준으로 닫혔고,
+M4 Adaptive Guidance Runtime은 다음 구현 마일스톤이지만 아직 시작되지 않았다.
+`G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
 
 ## 실행
 
@@ -125,7 +128,9 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [Specification authority](docs/spec-authority.md): canonical 원문 우선순위와 구현 범위
 - [M0 verification](docs/milestones/M0.md): 변경 파일, 검증 결과, 남은 문제
 - [M1 walking skeleton](docs/milestones/M1.md): 상태 흐름, FakeJudge, resume, Reveal, 검증
-- [M3 Judge and evaluation](docs/milestones/M3.md): OpenAI adapter, Gold dataset, 평가/검증 상태
+- [M3 Judge / Semantic Sensor](docs/milestones/M3.md): CLOSED product foundation and preserved verifier research
+- [M4 Adaptive Guidance Runtime](docs/milestones/M4.md): next milestone scope and acceptance criteria; not implemented
+- [Runtime v1 product direction](docs/decisions/0017-product-runtime-v1-adaptive-guidance.md): adaptive guidance over perfect verification
 - [Judge v1 Luna baseline](docs/evals/judge-v1-luna-baseline.md): frozen first live-provider result
 - [Judge v2 semantic contract](docs/evals/judge-v2-semantic-contract.md): independent status/ambiguity rules
 - [Judge v2 label audit](docs/evals/judge-v2-label-audit.md): every audited v1→v2 label change

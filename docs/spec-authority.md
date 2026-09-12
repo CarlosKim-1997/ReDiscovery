@@ -49,8 +49,11 @@ milestones.
 
 ## Current milestone scope
 
-M0–M2 are accepted and closed. M3 adds only the production-shaped semantic Judge
-adapter, server evidence validation, recoverable EVALUATING persistence, redacted
-`ai_runs`, and versioned Gold evaluation tooling/data. M4 and later behavior remains
-out of scope. M3 cannot be accepted until its real-provider evaluation and hosted CI
-gates are actually run and reported.
+M0–M2 are accepted and closed. M3 is closed under the Runtime v1 product-fit
+semantic-sensor definition established by
+[ADR 0017](decisions/0017-product-runtime-v1-adaptive-guidance.md). That decision
+supersedes the earlier Final Holdout closure requirement only for the current
+Runtime v1 product milestone; it does not rewrite or pass any historical verifier
+experiment. Final Synthesis remains a preserved research asset and replacement
+seam. M4 Adaptive Guidance Runtime is next but not implemented. M5 and later
+behavior remains out of scope.
