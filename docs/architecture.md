@@ -271,3 +271,15 @@ even alongside misconception. The application adds only code/label/explanation t
 the authorized Reveal result, never Play/start/getOwned. Legacy Reveal and the
 historical verifier discoveryOutcome are unchanged. There is no numerical score,
 provider call, generated comparison, animation or schedule publication in M5-A.
+
+M5-B adds schema v5 Conway v7 with approved `personalized-reveal-v1` mapping inside
+REVEAL_CONTENT, preserving four-layer storage and immutable v6 bytes. The pure
+domain projection resolves exact thought/evidence spans, chooses at most two
+distinct excerpts (positive status/depth first, at most one required divergence),
+and omits unusable/oversized evidence. Sanitized omission categories pass through
+an optional application callback to the route logger, never the public DTO.
+The authorized application response explicitly strips the content mapping and
+publishes only labels/excerpts/approved explanations plus canonical insight.
+A shared Reveal/Result section consumes that view; legacy content and existing
+Reveal timing remain unchanged. No DB migration, provider call, generated prose,
+score, v7 schedule publication or M5-C choreography is added.

@@ -8,6 +8,7 @@ import type { PlaySession } from "@/domain/play/session";
 import type { ServerPolicy } from "@/domain/content/schema";
 import { deriveRevealOutcome } from "@/domain/play/final-synthesis";
 import { resolveAdaptiveRevealOutcome } from "@/domain/reveal/outcome";
+import { projectPersonalizedConnection, type PersonalizedEvidenceIssue } from "@/domain/reveal/personalized-connection";
 import { toPublicSessionView } from "./session-view";
 import { JudgeVerdictValidationError, validateJudgeVerdict } from "./judge-verdict";
 import { JudgeExecutionError, type JudgeAttempt } from "@/ports/judge";
@@ -60,15 +61,18 @@ export async function answer(deps:DailyGameDeps,deviceId:string,id:string,text:s
 }
 export async function recover(deps:DailyGameDeps,deviceId:string,id:string){return transition(deps,deviceId,id,(s,p)=>{const recovered=applyCorrectiveRescue(s,p);return recovered.status==="SYNTHESIZING"?{...recovered,synthesisEnteredAt:deps.clock.now()}:recovered;});}
 export async function lock(deps:DailyGameDeps,deviceId:string,id:string){return transition(deps,deviceId,id,(s,p)=>lockPlaySession(s,p));}
-export async function reveal(deps:DailyGameDeps,deviceId:string,id:string){
+export async function reveal(deps:DailyGameDeps,deviceId:string,id:string,onEvidenceIssue?:(issue:PersonalizedEvidenceIssue)=>void){
   const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;
   if(s.status!=="LOCKED"&&s.status!=="REVEAL_READY"&&s.status!=="REVEALED")throw new Error("REVEAL_NOT_ALLOWED");
   const c=await requiredContent(deps,s.contentVersionId);const discoveryOutcome=deriveRevealOutcome(s);
   const revealOutcome=resolveAdaptiveRevealOutcome(s,c.serverPolicy);
+  const personalized=projectPersonalizedConnection(s,c.revealContent,c.serverPolicy);
+  for(const issue of personalized?.issues??[])onEvidenceIssue?.(issue);
+  const {theory,person,year,explanation,connection,provenance}=c.revealContent;
   let representativeThought:string|undefined;
   if(discoveryOutcome==="VERIFIED_LEGACY"&&s.lockEvidence)representativeThought=resolveEvidence(s,s.lockEvidence);
   if(discoveryOutcome==="VERIFIED_FINAL_SYNTHESIS"&&s.verifiedSynthesisAttemptId){const attempts=await deps.store.getFinalSynthesisAttempts(s.id,deviceId);representativeThought=attempts?.find(attempt=>attempt.id===s.verifiedSynthesisAttemptId)?.text??undefined;}
-  return{...c.revealContent,discoveryOutcome,...(revealOutcome?{revealOutcome}:{}),...(representativeThought?{representativeThought}:{}),substantialGuidanceUsed:s.guidance.some(g=>g.stage==="RESCUE"||g.stage==="CORRECTION"),connection:representativeThought?`당신은 “${representativeThought}”라고 보았습니다. ${c.revealContent.connection}`:c.revealContent.connection};
+  return{theory,person,year,explanation,provenance,discoveryOutcome,...(revealOutcome?{revealOutcome}:{}),...(personalized?{personalizedConnection:personalized.view}:{}),...(representativeThought?{representativeThought}:{}),substantialGuidanceUsed:s.guidance.some(g=>g.stage==="RESCUE"||g.stage==="CORRECTION"),connection:representativeThought?`당신은 “${representativeThought}”라고 보았습니다. ${connection}`:connection};
 }
 export async function finishReveal(deps:DailyGameDeps,deviceId:string,id:string){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const completed=completeReveal(s);const next={...completed,stateVersion:s.status==="REVEALED"?s.stateVersion:s.stateVersion+1};if(s.status!=="REVEALED"&&!await deps.store.completeReveal(s.stateVersion,next))throw new Error("STALE_STATE_VERSION");const attempts="final_synthesis" in c.serverPolicy?await deps.store.getFinalSynthesisAttempts(s.id,deviceId):[];return toPublicSessionView(next,c.serverPolicy,attempts??[],deps.clock.now());}
 async function transition(deps:DailyGameDeps,deviceId:string,id:string,fn:(s:PlaySession,p:ServerPolicy)=>PlaySession){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const changed=fn(s,c.serverPolicy);const next={...changed,stateVersion:s.stateVersion+1};if(!await deps.store.saveTransition(s.stateVersion,next))throw new Error("STALE_STATE_VERSION");const attempts="final_synthesis" in c.serverPolicy?await deps.store.getFinalSynthesisAttempts(s.id,deviceId):[];return toPublicSessionView(next,c.serverPolicy,attempts??[],deps.clock.now());}

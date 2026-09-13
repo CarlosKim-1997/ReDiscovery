@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "./session-client";
 import type { RevealView } from "./session-types";
+import { PersonalizedRevealSection } from "./personalized-reveal-section";
 
 export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
@@ -42,14 +43,14 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
         <h2>{reveal.discoveryOutcome === "VERIFIED_FINAL_SYNTHESIS" ? "당신이 마지막으로 정리한 생각" : "당신이 먼저 적은 생각"}</h2>
         <blockquote>{reveal.representativeThought}</blockquote>
       </section> : null}
-      <section className="connection-card">
+      {reveal.personalizedConnection ? <PersonalizedRevealSection reveal={reveal} /> : <section className="connection-card">
         <h2>어디에서 만났을까요?</h2>
         <p>{reveal.connection}</p>
         <p>{reveal.explanation}</p>
-      </section>
-      <p className="guidance-provenance">
+      </section>}
+      {!reveal.personalizedConnection ? <p className="guidance-provenance">
         {reveal.discoveryOutcome === "UNVERIFIED_REVEAL" ? "잠금 없이 공개까지 살펴보았습니다." : reveal.substantialGuidanceUsed ? "도움을 통해 핵심 구조와 만났습니다." : "핵심 구조를 스스로 발견했습니다."}
-      </p>
+      </p> : null}
       <button className="secondary-button" onClick={() => router.push("/")}>처음으로</button>
     </main>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "./session-client";
 import type { RevealView } from "./session-types";
+import { PersonalizedRevealSection } from "./personalized-reveal-section";
 
 export const REVEAL_TIMING_MS = Object.freeze({ normal: [0, 450, 650, 650, 650, 600], reduced: [0, 40, 40, 40, 40, 40] });
 
@@ -59,6 +60,7 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
         <h1 className={step >= 4 ? "shown" : "hidden-beat"}>{reveal.theory}</h1>
       </section>
       <p className={`transition-copy ${step >= 5 ? "shown" : ""}`}>두 생각이 만나는 지점을 살펴봅니다.</p>
+      {step >= 5 ? <PersonalizedRevealSection reveal={reveal} /> : null}
     </main>
   );
 }

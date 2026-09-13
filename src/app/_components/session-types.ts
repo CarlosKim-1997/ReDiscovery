@@ -1,4 +1,5 @@
 import type { PublicSessionView } from "@/application/play/session-view";
+import type { reveal } from "@/application/play/daily-game";
 export interface PublicDaily { readonly id:string;readonly canonicalDate:string;readonly sequenceNumber:number;readonly label:string;readonly estimatedMinutes:number;readonly scenario:string;readonly question:string }
 export interface DailyPayload { readonly daily:PublicDaily;readonly session:PublicSessionView }
-export interface RevealView { readonly year:string;readonly person:string;readonly theory:string;readonly explanation:string;readonly representativeThought?:string;readonly substantialGuidanceUsed:boolean;readonly connection:string;readonly discoveryOutcome:"VERIFIED_LEGACY"|"VERIFIED_FINAL_SYNTHESIS"|"UNVERIFIED_REVEAL" }
+export type RevealView = NonNullable<Awaited<ReturnType<typeof reveal>>>;

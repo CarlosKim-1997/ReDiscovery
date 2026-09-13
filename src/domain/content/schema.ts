@@ -37,6 +37,17 @@ const adaptiveGuidancePolicy = z.object({
   by_node: z.record(nodeId, adaptiveGuidanceEntry),
 }).strict();
 
+const personalizedRevealPolicy = z.object({
+  contract_version: z.literal("personalized-reveal-v1"),
+  concept_order: z.array(nodeId).min(1),
+  by_node: z.record(nodeId, z.object({
+    label: z.string().trim().min(1),
+    discovered: z.string().trim().min(1),
+    partial: z.string().trim().min(1),
+    contradicted: z.string().trim().min(1),
+  }).strict()),
+}).strict();
+
 const serverPolicyBase = {
   max_turns: z.number().int().min(1).max(10),
   required_nodes: z.array(nodeId).min(1),
@@ -99,11 +110,17 @@ const adaptiveGuidanceContentSchema = z.object({
   }).strict(),
 }).strict();
 
+const personalizedRevealContentSchema = adaptiveGuidanceContentSchema.extend({
+  schema_version: z.literal(5),
+  REVEAL_CONTENT: commonContent.REVEAL_CONTENT.extend({ personalized_reveal: personalizedRevealPolicy }).strict(),
+}).strict();
+
 export const approvedContentSchema = z.union([
   historicalContentSchema,
   componentProofContentSchema,
   finalSynthesisContentSchema,
   adaptiveGuidanceContentSchema,
+  personalizedRevealContentSchema,
 ]).superRefine((content, context) => {
   const ids = content.JUDGE_RUBRIC.nodes.map(({ id }) => id);
   if (new Set(ids).size !== ids.length) context.addIssue({ code: "custom", path: ["JUDGE_RUBRIC", "nodes"], message: "Duplicate node IDs" });
@@ -139,7 +156,7 @@ export const approvedContentSchema = z.union([
       }
     }
   }
-  if (content.schema_version === 4) {
+  if (content.schema_version === 4 || content.schema_version === 5) {
     const adaptive = content.SERVER_POLICY.adaptive_guidance;
     const order = adaptive.concept_order;
     if (new Set(order).size !== order.length) {
@@ -172,11 +189,25 @@ export const approvedContentSchema = z.union([
       }
     }
   }
+  if (content.schema_version === 5) {
+    const personalized = content.REVEAL_CONTENT.personalized_reveal;
+    const mapped = Object.keys(personalized.by_node);
+    for (const required of content.SERVER_POLICY.required_nodes) {
+      if (!mapped.includes(required)) context.addIssue({ code: "custom", path: ["REVEAL_CONTENT", "personalized_reveal", "by_node"], message: `Missing required Reveal node: ${required}` });
+    }
+    for (const mappedId of mapped) {
+      if (!ids.includes(mappedId)) context.addIssue({ code: "custom", path: ["REVEAL_CONTENT", "personalized_reveal", "by_node"], message: `Unknown Reveal node: ${mappedId}` });
+    }
+    const order = personalized.concept_order;
+    if (new Set(order).size !== order.length || order.length !== mapped.length || mapped.some(id => !order.includes(id)) || order.some(id => !mapped.includes(id))) {
+      context.addIssue({ code: "custom", path: ["REVEAL_CONTENT", "personalized_reveal", "concept_order"], message: "Reveal order must contain each mapped node exactly once" });
+    }
+  }
   const forbidden = [content.REVEAL_CONTENT.theory, content.REVEAL_CONTENT.person, content.REVEAL_CONTENT.year, ...(content.SERVER_POLICY.recognition_aliases ?? [])];
   const guardedLayers: readonly (readonly [string, unknown])[] = [
     ["PUBLIC_PLAY", content.PUBLIC_PLAY],
     ["JUDGE_RUBRIC", content.JUDGE_RUBRIC],
-    ...(content.schema_version === 4 ? [["ADAPTIVE_GUIDANCE", content.SERVER_POLICY.adaptive_guidance] as const] : []),
+    ...(content.schema_version === 4 || content.schema_version === 5 ? [["ADAPTIVE_GUIDANCE", content.SERVER_POLICY.adaptive_guidance] as const] : []),
   ];
   for (const [layer, value] of guardedLayers) {
     const serialized = JSON.stringify(value).toLocaleLowerCase("en-US");
