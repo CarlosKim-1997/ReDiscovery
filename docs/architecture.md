@@ -337,3 +337,19 @@ defaults. No client-readable RLS policies or Data API CRUD are introduced.
 Owner/server access and existing service_role grants remain; future client DB
 features require an explicit security review. Dedicated-project live migration
 verification and final M6 closure review are separate, still pending gates.
+
+M7-A replaces the production Judge failure rollback with a shared paid-operation
+lifecycle. Explicit turn/submission identity is persisted on the answer; one JUDGE
+operation owns its lease and single manual recovery round. Initial reservation and
+each adapter retry commit a separate ai_run admission before provider execution.
+Session -> operation -> run locking and existing gameplay CAS fence stale owners.
+Validated gameplay, telemetry success and operation completion commit atomically
+in the PostgreSQL adapter, without a result ledger/outbox/worker. UNKNOWN admissions
+remain consumed; lease expiry permits explicit recovery, never an automatic recall.
+Historical telemetry has nullable new fields and no fabricated provenance.
+
+The application coordinates provider-neutral lifecycle hooks; OpenAI SDK code stays
+in its adapter and SDK retries remain disabled. Common public evaluation capability
+drives legacy/adaptive pause UI without run metadata. The operation-answer FK blocks
+implicit provenance deletion while nullable raw text remains purgeable. M7-B global
+budget enforcement and Gmail alerts are not part of this seam.

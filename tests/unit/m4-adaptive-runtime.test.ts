@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import raw from "../../content/approved/conway-law.v6.json";
 import { approvedContentSchema } from "@/domain/content/schema";
-import { answer, finishReveal, getOwned, reveal, type DailyGameDeps } from "@/application/play/daily-game";
+import { finishReveal, getOwned, reveal, type DailyGameDeps } from "@/application/play/daily-game";
+import { answer } from "../support/judge-submission";
 import { createPlaySession, type PlaySession } from "@/domain/play/session";
 import { storedGuidanceText, terminalAdaptiveFeedback } from "@/domain/play/adaptive-runtime";
 import { LEARNER_STATES, type NodeStatus } from "@/domain/play/vocabulary";
 import type { PrimaryStorePort } from "@/ports/primary-store";
 import type { JudgePort } from "@/ports/judge";
 import { canonicalSessionRoute } from "@/app/_components/session-routing";
+import { installJudgeOperationFixture } from "../support/judge-operation-store";
 
 const content = approvedContentSchema.parse(raw);
 const policy = content.SERVER_POLICY;
@@ -30,7 +32,7 @@ function fixture(turns: readonly (readonly NodeStatus[])[]) {
       const index = policy.required_nodes.indexOf(node.id);
       const status = index < 0 ? "ABSENT" : statuses[index] ?? "ABSENT";
       return { nodeId: node.id, status, ...(status !== "ABSENT" ? { evidenceText: input.currentAnswer } : {}) };
-    }) }, attempts: [] };
+    }) }, attempts: [{attempt: 1,provider: "fake",model: "fixture",promptVersion: "fixture",schemaValid: true,resultStatus: "SUCCEEDED",latencyMs: 0}] };
   });
   const store = {
     getOwnedSession: async () => session,
@@ -43,6 +45,7 @@ function fixture(turns: readonly (readonly NodeStatus[])[]) {
     recordAiRuns: async () => {},
     completeReveal: async (_version: number, next: PlaySession) => { session = next; return true; },
   } as unknown as PrimaryStorePort;
+  installJudgeOperationFixture(store);
   const deps: DailyGameDeps = { store, judge: { evaluate }, clock: { now: () => new Date("2026-09-13T00:00:00Z") }, identity: { randomId: () => `a${++sequence}`, randomToken: () => "unused", hashToken: text => text } };
   return { deps, evaluate, stored: () => session, submit: () => answer(deps, "device", "s", `생각 ${sequence + 1}`) };
 }

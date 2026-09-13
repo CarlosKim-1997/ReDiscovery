@@ -89,6 +89,7 @@ export interface OpenAIJudgeAdapterOptions {
 
 export class OpenAIJudgeAdapter implements JudgePort {
   readonly maxAttempts: 1 | 2;
+  get admissionMetadata() { return { provider: "openai", model: this.model, promptVersion: this.promptVersion }; }
 
   constructor(
     private readonly transport: OpenAIJudgeTransport,
@@ -118,6 +119,8 @@ export class OpenAIJudgeAdapter implements JudgePort {
     };
 
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+      // Admission/control errors are deliberately outside the provider retry catch.
+      await input.lifecycle?.beforeAttempt(attempt);
       const started = this.nowMs();
       try {
         const response = await this.transport.classify(request);
@@ -148,6 +151,8 @@ export class OpenAIJudgeAdapter implements JudgePort {
           latencyMs: Math.max(0, Math.round(this.nowMs() - started)),
           ...(failureCategory ? { failureCategory } : {}),
         });
+        const status = error && typeof error === "object" && "status" in error ? error.status : undefined;
+        await input.lifecycle?.failedAttempt(attempts.at(-1)!, !schemaError && typeof status !== "number");
       }
     }
     throw new JudgeExecutionError(attempts);

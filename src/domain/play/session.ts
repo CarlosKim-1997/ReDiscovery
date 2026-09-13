@@ -2,6 +2,7 @@ import type { AttemptType, NodeStatus, PlayStage, PlayStatus } from "./vocabular
 
 export interface SubmittedThought {
   readonly id: string;
+  readonly submissionId?: string;
   readonly turn: number;
   readonly stage: PlayStage;
   readonly text: string;
@@ -58,6 +59,12 @@ export interface FinalSynthesisAttempt {
 }
 
 export interface PlaySession {
+  /** Read-only projection of the related operation, never persisted as session state. */
+  readonly judgeEvaluation?: {
+    readonly status: "EVALUATING" | "RECOVERABLE" | "COMPLETED" | "RECOVERY_EXHAUSTED";
+    readonly recoveryCount: 0 | 1;
+    readonly leaseExpiresAt?: Date;
+  };
   readonly id: string;
   readonly dailyId: string;
   readonly contentVersionId: string;

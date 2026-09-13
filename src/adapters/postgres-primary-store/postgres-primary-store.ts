@@ -5,18 +5,125 @@ import type { FinalSynthesisAttempt, PlaySession } from "@/domain/play/session";
 import type { AiRunRecord, DailyRecord, PrimaryStorePort } from "@/ports/primary-store";
 import { externalSubjectSchema, sessionClaimDecision, type Account, type SessionAccountOwnership, type SessionClaimResult } from "@/domain/identity/account";
 import type { AccountStorePort } from "@/ports/account-store";
+import type { JudgeOperation, JudgeExecutionOwner, JudgeAdmissionMetadata, JudgeOperationStorePort, ReserveJudgeResult } from "@/ports/ai-operation";
+import type { JudgeAttempt } from "@/ports/judge";
+import { beginEvaluation } from "@/domain/play/policy";
 
 type Row = Record<string, unknown>;
 const dateText = (value: unknown) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 function synthesisAttempt(row:Row):FinalSynthesisAttempt{return{id:String(row.id),sessionId:String(row.session_id),attemptNumber:Number(row.attempt_number) as 1|2,submissionKeyHash:String(row.submission_key_hash),submissionTextHash:String(row.submission_text_hash),...(row.text!==null?{text:String(row.text)}:{}),charCount:Number(row.char_count),submittedAt:new Date(String(row.submitted_at)),evaluationState:row.evaluation_state as FinalSynthesisAttempt["evaluationState"],evaluationGeneration:Number(row.evaluation_generation),...(row.evaluation_started_at?{evaluationStartedAt:new Date(String(row.evaluation_started_at))}:{}),...(row.evaluation_lease_expires_at?{evaluationLeaseExpiresAt:new Date(String(row.evaluation_lease_expires_at))}:{}),...(row.evaluated_at?{evaluatedAt:new Date(String(row.evaluated_at))}:{}),...(row.last_error_at?{lastErrorAt:new Date(String(row.last_error_at))}:{}),proofContractVersion:"final-synthesis-proof-v1",...(row.redacted_result!==null?{redactedResult:row.redacted_result}:{}),...(row.failure_category!==null?{failureCategory:String(row.failure_category)}:{}),...(row.purged_at?{purgedAt:new Date(String(row.purged_at))}:{}),updatedAt:new Date(String(row.updated_at))};}
 
 function account(row: Row): Account { return { id: String(row.id), externalSubject: String(row.external_subject), createdAt: new Date(String(row.created_at)), updatedAt: new Date(String(row.updated_at)) }; }
+function operation(row: Row): JudgeOperation { return { id: String(row.id), answerId: String(row.answer_id), status: row.status as JudgeOperation["status"], recoveryCount: Number(row.recovery_count) as 0 | 1, ...(row.evaluation_lease_expires_at ? { leaseExpiresAt: new Date(String(row.evaluation_lease_expires_at)) } : {}) }; }
 function ownership(row: Row): SessionAccountOwnership { return { sessionId: String(row.id), anonymousDeviceId: String(row.anonymous_device_id), attemptType: String(row.attempt_type), ...(row.account_id ? { accountId: String(row.account_id), accountClaimedAt: new Date(String(row.account_claimed_at)) } : {}) }; }
 
 export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort {
   private readonly sql: Sql;
   constructor(databaseUrl: string) { this.sql = postgres(databaseUrl, { max: 10 }); }
   async close() { await this.sql.end(); }
+
+  async reserveJudgeSubmission(input: Parameters<JudgeOperationStorePort["reserveJudgeSubmission"]>[0]): Promise<ReserveJudgeResult> {
+    return this.sql.begin(async tx => {
+      const [locked] = await tx<Row[]>`SELECT id FROM play_sessions WHERE id=${input.sessionId} AND anonymous_device_id=${input.deviceId} FOR UPDATE`;
+      if (!locked) return { kind: "SESSION_NOT_FOUND" };
+      const [existing] = await tx<Row[]>`SELECT submission_payload_sha256 FROM user_answers WHERE session_id=${input.sessionId} AND submission_id=${input.answer.submissionId}`;
+      if (existing) return existing.submission_payload_sha256 === input.payloadHash ? { kind: "REPLAY", session: (await this.load(tx,input.sessionId,input.deviceId))! } : { kind: "IDEMPOTENCY_CONFLICT" };
+      const [occupied] = await tx`SELECT id FROM user_answers WHERE session_id=${input.sessionId} AND turn=${input.answer.turn}`;
+      if (occupied) return { kind: "TURN_ALREADY_SUBMITTED" };
+      const session = (await this.load(tx,input.sessionId,input.deviceId))!;
+      const content = await this.getContentVersion(session.contentVersionId);
+      if (!content || session.status !== "THINKING" || input.answer.turn !== session.turnCount+1 || input.answer.turn > content.serverPolicy.max_turns || !input.answer.text.trim() || input.answer.text.length > 2000) return { kind: "INVALID_SESSION_STATE" };
+      if (session.stateVersion !== input.expectedVersion) return { kind: "STALE_STATE_VERSION" };
+      const answer = { ...input.answer, stage: session.stage };
+      const next = { ...beginEvaluation(session,answer), stateVersion: session.stateVersion+1 };
+      await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count,submission_id,submission_payload_sha256) VALUES(${answer.id},${session.id},${answer.turn},${answer.stage},${answer.text},char_length(${answer.text}),${answer.submissionId},${input.payloadHash})`;
+      const lease = new Date(input.at.getTime()+input.leaseDurationMs);
+      const [created] = await tx<Row[]>`INSERT INTO ai_operations(id,answer_id,kind,status,recovery_count,evaluation_lease_expires_at,created_at,updated_at) VALUES(${input.operationId},${answer.id},'JUDGE','EVALUATING',0,${lease},${input.at},${input.at}) RETURNING *`;
+      const owner = { session: next, answer, operation: operation(created!), runId: input.runId };
+      await this.insertAdmission(tx,owner,input.runId,1,input.at,input.metadata);
+      await this.persist(tx,session.stateVersion,next);
+      return { kind: "NEW", owner };
+    });
+  }
+
+  async reserveJudgeRecovery(input: Parameters<JudgeOperationStorePort["reserveJudgeRecovery"]>[0]): Promise<ReserveJudgeResult> {
+    return this.sql.begin(async tx => {
+      const [locked] = await tx<Row[]>`SELECT id FROM play_sessions WHERE id=${input.sessionId} AND anonymous_device_id=${input.deviceId} FOR UPDATE`;
+      if (!locked) return { kind: "SESSION_NOT_FOUND" };
+      const session = (await this.load(tx,input.sessionId,input.deviceId))!;
+      const answer = session.thoughts.find(a => a.submissionId === input.submissionId);
+      if (!answer || answer.turn !== session.turnCount || answer.id !== session.thoughts.at(-1)?.id) return { kind: "INVALID_SESSION_STATE" };
+      const [row] = await tx<Row[]>`SELECT * FROM ai_operations WHERE answer_id=${answer.id} AND kind='JUDGE' FOR UPDATE`;
+      if (!row) return { kind: "INVALID_SESSION_STATE" };
+      let op = operation(row);
+      if (op.status === "COMPLETED") return { kind: "REPLAY", session };
+      if (op.status === "EVALUATING" && op.leaseExpiresAt!.getTime() <= input.at.getTime()) {
+        await tx`UPDATE ai_runs SET execution_status='UNKNOWN',settled_at=${input.at} WHERE operation_id=${op.id} AND execution_status='ADMITTED'`;
+        await tx`UPDATE ai_operations SET status=${op.recoveryCount === 0 ? "RECOVERABLE" : "RECOVERY_EXHAUSTED"},evaluation_lease_expires_at=NULL,updated_at=${input.at} WHERE id=${op.id}`;
+        op = { id: op.id,answerId: op.answerId,recoveryCount: op.recoveryCount,status: op.recoveryCount === 0 ? "RECOVERABLE" : "RECOVERY_EXHAUSTED" };
+      }
+      if (op.status === "RECOVERY_EXHAUSTED") return { kind: "RECOVERY_EXHAUSTED" };
+      if (session.stateVersion !== input.expectedVersion) return { kind: "STALE_STATE_VERSION" };
+      if (op.status !== "RECOVERABLE" || op.recoveryCount !== 0 || (session.status !== "ERROR_RECOVERABLE" && session.status !== "EVALUATING")) return { kind: "INVALID_SESSION_STATE" };
+      const lease = new Date(input.at.getTime()+input.leaseDurationMs);
+      await tx`UPDATE ai_operations SET status='EVALUATING',recovery_count=1,evaluation_lease_expires_at=${lease},updated_at=${input.at} WHERE id=${op.id}`;
+      const next = { ...session, status: "EVALUATING" as const, stateVersion: session.stateVersion+1 };
+      const owner = { session: next, answer, operation: { ...op,status: "EVALUATING" as const,recoveryCount: 1 as const,leaseExpiresAt: lease }, runId: input.runId };
+      await this.insertAdmission(tx,owner,input.runId,1,input.at,input.metadata);
+      await this.persist(tx,session.stateVersion,next);
+      return { kind: "NEW", owner };
+    });
+  }
+
+  async getJudgeOperation(sessionId: string,deviceId: string) {
+    const [row] = await this.sql<Row[]>`SELECT o.* FROM play_sessions p JOIN user_answers a ON a.session_id=p.id AND a.turn=p.turn_count JOIN ai_operations o ON o.answer_id=a.id AND o.kind='JUDGE' WHERE p.id=${sessionId} AND p.anonymous_device_id=${deviceId}`;
+    return row ? operation(row) : undefined;
+  }
+  private async fenceJudge(tx: Sql, owner: JudgeExecutionOwner, at: Date) {
+    if (!await this.lockVersion(tx,owner.session,owner.session.stateVersion)) throw new Error("STALE_STATE_VERSION");
+    const [row] = await tx<Row[]>`SELECT * FROM ai_operations WHERE id=${owner.operation.id} AND answer_id=${owner.answer.id} FOR UPDATE`;
+    if (!row || row.status !== "EVALUATING" || Number(row.recovery_count) !== owner.operation.recoveryCount || new Date(String(row.evaluation_lease_expires_at)).getTime() <= at.getTime()) throw new Error("STALE_JUDGE_EXECUTION");
+  }
+  async verifyJudgeAdmission(owner: JudgeExecutionOwner,at: Date) {
+    await this.sql.begin(async tx => { await this.fenceJudge(tx,owner,at); const [run] = await tx`SELECT id FROM ai_runs WHERE id=${owner.runId} AND operation_id=${owner.operation.id} AND evaluation_round=${owner.operation.recoveryCount} AND execution_status='ADMITTED' FOR UPDATE`; if (!run) throw new Error("STALE_JUDGE_EXECUTION"); });
+  }
+  async admitJudgeRetry(owner: JudgeExecutionOwner,runId: string,at: Date,metadata: JudgeAdmissionMetadata) {
+    await this.sql.begin(async tx => {
+      await this.fenceJudge(tx,owner,at);
+      const [prior] = await tx<Row[]>`SELECT execution_status FROM ai_runs WHERE operation_id=${owner.operation.id} AND evaluation_round=${owner.operation.recoveryCount} AND attempt=1 FOR UPDATE`;
+      if (!prior || !["FAILED","UNKNOWN"].includes(String(prior.execution_status))) throw new Error("INVALID_JUDGE_ATTEMPT");
+      await this.insertAdmission(tx,owner,runId,2,at,metadata);
+    });
+  }
+  private async insertAdmission(tx: Sql,owner: JudgeExecutionOwner,runId: string,attempt: number,at: Date,metadata: JudgeAdmissionMetadata) {
+    await tx`INSERT INTO ai_runs(id,session_id,answer_id,operation_id,evaluation_round,purpose,provider,model,prompt_version,content_version_id,attempt,execution_status,admitted_at,created_at) VALUES(${runId},${owner.session.id},${owner.answer.id},${owner.operation.id},${owner.operation.recoveryCount},'JUDGE',${metadata.provider},${metadata.model},${metadata.promptVersion},${owner.session.contentVersionId},${attempt},'ADMITTED',${at},${at})`;
+  }
+  private async settleAdmission(tx: Sql,owner: JudgeExecutionOwner,runId: string,attempt: JudgeAttempt,ambiguous: boolean,at: Date) {
+    const [updated] = await tx`UPDATE ai_runs SET execution_status=${ambiguous ? "UNKNOWN" : attempt.resultStatus === "SUCCEEDED" ? "SUCCEEDED" : "FAILED"},settled_at=${at},schema_valid=${ambiguous ? null : attempt.schemaValid},result_status=${ambiguous ? null : attempt.resultStatus},failure_category=${ambiguous ? null : attempt.failureCategory ?? null},input_tokens=${attempt.inputTokens ?? null},output_tokens=${attempt.outputTokens ?? null},total_tokens=${attempt.totalTokens ?? null},latency_ms=${attempt.latencyMs},provider_request_id=${attempt.providerRequestId ?? null} WHERE id=${runId} AND operation_id=${owner.operation.id} AND evaluation_round=${owner.operation.recoveryCount} AND attempt=${attempt.attempt} AND execution_status='ADMITTED' RETURNING id`;
+    if (!updated) throw new Error("STALE_JUDGE_EXECUTION");
+  }
+  async settleJudgeFailure(owner: JudgeExecutionOwner,runId: string,attempt: JudgeAttempt,ambiguous: boolean,at: Date) {
+    await this.sql.begin(async tx => { await this.fenceJudge(tx,owner,at); await this.settleAdmission(tx,owner,runId,attempt,ambiguous,at); });
+  }
+  async pauseJudgeOperation(owner: JudgeExecutionOwner,at: Date) {
+    return this.sql.begin(async tx => {
+      await this.fenceJudge(tx,owner,at);
+      await tx`UPDATE ai_runs SET execution_status='UNKNOWN',settled_at=${at} WHERE operation_id=${owner.operation.id} AND execution_status='ADMITTED'`;
+      await tx`UPDATE ai_operations SET status=${owner.operation.recoveryCount === 0 ? "RECOVERABLE" : "RECOVERY_EXHAUSTED"},evaluation_lease_expires_at=NULL,updated_at=${at} WHERE id=${owner.operation.id}`;
+      const next = { ...owner.session,status: "ERROR_RECOVERABLE" as const,stateVersion: owner.session.stateVersion+1 };
+      await this.persist(tx,owner.session.stateVersion,next);
+      return (await this.load(tx,next.id,next.anonymousDeviceId))!;
+    });
+  }
+  async completeJudgeOperation(owner: JudgeExecutionOwner,runId: string,attempt: JudgeAttempt,next: PlaySession,at: Date) {
+    return this.sql.begin(async tx => {
+      await this.fenceJudge(tx,owner,at);
+      await this.persist(tx,owner.session.stateVersion,next);
+      await this.settleAdmission(tx,owner,runId,attempt,false,at);
+      await tx`UPDATE ai_operations SET status='COMPLETED',evaluation_lease_expires_at=NULL,completed_at=${at},updated_at=${at} WHERE id=${owner.operation.id}`;
+      return (await this.load(tx,next.id,next.anonymousDeviceId))!;
+    });
+  }
   async findAccountByExternalSubject(externalSubject: string) {
     const subject = externalSubjectSchema.parse(externalSubject);
     const [row] = await this.sql<Row[]>`SELECT * FROM accounts WHERE external_subject=${subject}`;
@@ -144,13 +251,15 @@ export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort 
   private async lockVersion(sql:Sql,s:PlaySession,v:number){const [r]=await sql<Row[]>`SELECT state_version FROM play_sessions WHERE id=${s.id} AND anonymous_device_id=${s.anonymousDeviceId} FOR UPDATE`;return Number(r?.state_version)===v;}
   private async load(sql:Sql,id:string,deviceId:string):Promise<PlaySession|undefined>{
     const [s]=await sql<Row[]>`SELECT p.*,EXISTS(SELECT 1 FROM daily_completions c WHERE c.session_id=p.id) reveal_completed FROM play_sessions p WHERE p.id=${id} AND p.anonymous_device_id=${deviceId}`;if(!s)return undefined;
-    const answers=await sql<Row[]>`SELECT id,turn,stage,text FROM user_answers WHERE session_id=${id} ORDER BY turn`;
+    const answers=await sql<Row[]>`SELECT id,turn,stage,text,submission_id FROM user_answers WHERE session_id=${id} ORDER BY turn`;
+    const [judgeRow]=await sql<Row[]>`SELECT o.* FROM ai_operations o JOIN user_answers a ON a.id=o.answer_id WHERE a.session_id=${id} AND a.turn=${Number(s.turn_count)} AND o.kind='JUDGE'`;
     const nodes=await sql<Row[]>`SELECT * FROM node_discoveries WHERE session_id=${id} ORDER BY node_id`;
     const events=await sql<Row[]>`SELECT stage,guidance_key FROM guidance_events WHERE session_id=${id} ORDER BY created_at,id`;
     const content=await this.getContentVersion(String(s.content_version_id));if(!content)throw new Error("CONTENT_VERSION_NOT_FOUND");
     return {id,dailyId:String(s.daily_id),contentVersionId:String(s.content_version_id),anonymousDeviceId:deviceId,attemptType:s.attempt_type as PlaySession["attemptType"],status:s.status as PlaySession["status"],stage:s.stage as PlaySession["stage"],turnCount:Number(s.turn_count),stateVersion:Number(s.state_version),
       ...(s.account_id ? {accountId:String(s.account_id),accountClaimedAt:new Date(String(s.account_claimed_at))}:{}),
-      thoughts:answers.map(a=>({id:String(a.id),turn:Number(a.turn),stage:a.stage as PlaySession["stage"],text:String(a.text)})),
+      ...(judgeRow ? {judgeEvaluation: operation(judgeRow)} : {}),
+      thoughts:answers.map(a=>({id:String(a.id),turn:Number(a.turn),stage:a.stage as PlaySession["stage"],text:a.text === null ? "" : String(a.text),...(a.submission_id ? {submissionId:String(a.submission_id)} : {})})),
       discoveries:nodes.map(n=>({nodeId:String(n.node_id),status:n.status as PlaySession["discoveries"][number]["status"],...(n.first_stage?{firstStage:n.first_stage as PlaySession["stage"]}:{}),...(n.first_answer_id?{evidence:{answerId:String(n.first_answer_id),spanStart:Number(n.evidence_span_start),spanEnd:Number(n.evidence_span_end)}}:{}),...(n.contradiction_answer_id?{contradictionEvidence:{answerId:String(n.contradiction_answer_id),spanStart:Number(n.contradiction_span_start),spanEnd:Number(n.contradiction_span_end)}}:{})})),
       guidance:events.map(e=>{const key=String(e.guidance_key);return{stage:e.stage as Exclude<PlaySession["stage"],"BLIND">,key,text:storedGuidanceText(key,content.serverPolicy)};}),
       ...(s.lock_answer_id?{lockEvidence:{answerId:String(s.lock_answer_id),spanStart:Number(s.lock_span_start),spanEnd:Number(s.lock_span_end)}}:{}),...(s.synthesis_entry_reason?{synthesisEntryReason:s.synthesis_entry_reason as NonNullable<PlaySession["synthesisEntryReason"]>}:{}),...(s.synthesis_entered_at?{synthesisEnteredAt:new Date(String(s.synthesis_entered_at))}:{}),...(s.synthesis_skipped_at?{synthesisSkippedAt:new Date(String(s.synthesis_skipped_at))}:{}),...(s.verified_synthesis_attempt_id?{verifiedSynthesisAttemptId:String(s.verified_synthesis_attempt_id)}:{}),...(s.locked_at?{lockedAt:new Date(String(s.locked_at))}:{}),revealCompleted:Boolean(s.reveal_completed)};

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { REVEAL_OUTCOME_CODES, resolveAdaptiveRevealOutcome } from "@/domain/reveal/outcome";
-import { answer, getOwned, reveal, startOfficial } from "@/application/play/daily-game";
+import { getOwned, reveal, startOfficial } from "@/application/play/daily-game";
+import { answer } from "../support/judge-submission";
 import { adaptiveRuntimeFixture, fixtureAttempt } from "../support/adaptive-runtime-fixture";
 import { createPlaySession, type NodeDiscovery } from "@/domain/play/session";
 import type { LearnerState, NodeStatus } from "@/domain/play/vocabulary";

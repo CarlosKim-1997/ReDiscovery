@@ -8,6 +8,7 @@ import type { DailyGameDeps } from "../../src/application/play/daily-game";
 import { JudgeExecutionError, type JudgeExecution, type JudgePort } from "../../src/ports/judge";
 import type { AiRunRecord, PrimaryStorePort } from "../../src/ports/primary-store";
 import type { SemanticAiReadiness } from "../../src/ports/semantic-ai-readiness";
+import { installJudgeOperationFixture } from "./judge-operation-store";
 
 export const ADAPTIVE_FULL_FIXTURE_ANSWER = "팀 경계가 소통을 가르고 설계 결정이 모여 시스템 구조가 조직 구조를 닮는다.";
 export const fixtureAttempt = { attempt: 1, provider: "fake", model: "fixture", promptVersion: "fixture", schemaValid: true, resultStatus: "SUCCEEDED", latencyMs: 0 } as const;
@@ -52,6 +53,7 @@ export function adaptiveRuntimeFixture(legacy = false) {
     abortAnswerEvaluation: async (expected: number, prior: PlaySession) => cas(expected, { ...prior, stateVersion: expected + 1 }),
     recordAiRuns: async (runs: readonly AiRunRecord[]) => { aiRuns.push(...runs); },
   } as unknown as PrimaryStorePort;
+  installJudgeOperationFixture(store);
   const judge: JudgePort = { evaluate: async input => {
     judgeInputs.push(input);
     const scripted = executions.shift();

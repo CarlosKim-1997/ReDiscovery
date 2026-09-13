@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
-import { answer, finishReveal, getOwned, reveal, startOfficial } from "@/application/play/daily-game";
-import { AdaptiveEvaluationPausedError, resumeAdaptiveEvaluation } from "@/application/play/adaptive-evaluation";
+import { finishReveal, getOwned, reveal, startOfficial } from "@/application/play/daily-game";
+import { answer } from "../support/judge-submission";
+import { AdaptiveEvaluationPausedError } from "@/application/play/adaptive-evaluation";
+import { resumeAdaptiveEvaluation } from "../support/judge-submission";
 import { CachedSemanticAiReadiness } from "@/application/play/semantic-ai-readiness";
 import { OpenAISemanticReadinessProbe } from "@/adapters/openai-semantic-readiness/openai-semantic-readiness";
 import { makeSemanticAiReadiness } from "@/server/semantic-ai-readiness";
@@ -109,12 +111,13 @@ describe("M4-C start and passive execution evidence", () => {
     expect(f.aiRuns.at(-1)).toMatchObject({ resultStatus: "SCHEMA_ERROR", answerId: f.session().thoughts[0]!.id });
   });
 
-  it("legacy start is unchanged and legacy failure rolls back the answer", async () => {
+  it("legacy start is unchanged and legacy failure preserves the accepted answer", async () => {
     const f = adaptiveRuntimeFixture(true); f.setProbeState("UNAVAILABLE");
     await startOfficial(f.deps, "device"); expect(f.probes()).toBe(0);
     f.executions.push(fixtureProviderFailure());
-    await expect(answer(f.deps, "device", f.session().id, "legacy answer")).rejects.toThrow("JUDGE_UNAVAILABLE");
-    expect(f.session()).toMatchObject({ status: "THINKING", turnCount: 0, thoughts: [] });
+    await expect(answer(f.deps, "device", f.session().id, "legacy answer")).rejects.toBeInstanceOf(AdaptiveEvaluationPausedError);
+    expect(f.session()).toMatchObject({ status: "ERROR_RECOVERABLE", turnCount: 1 });
+    expect(f.session().thoughts).toHaveLength(1);
   });
 });
 
@@ -180,7 +183,7 @@ describe.each([1, 2])("M4-C interrupted Turn %i", turn => {
     expect(results.filter(result => result.status === "rejected")).toHaveLength(1);
     expect(f.judgeInputs).toHaveLength(before + 1); expect(f.session().thoughts).toHaveLength(turn);
     await expect(resumeAdaptiveEvaluation(f.deps, "device", f.session().id, version)).rejects.toThrow("STALE_STATE_VERSION");
-    await expect(resumeAdaptiveEvaluation(f.deps, "device", f.session().id, f.session().stateVersion)).rejects.toThrow("INVALID_SESSION_STATE");
+    await expect(resumeAdaptiveEvaluation(f.deps, "device", f.session().id, f.session().stateVersion)).resolves.toMatchObject({processing: "REPLAYED"});
     expect(f.judgeInputs).toHaveLength(before + 1);
   });
 

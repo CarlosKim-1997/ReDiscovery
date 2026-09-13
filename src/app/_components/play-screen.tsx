@@ -15,6 +15,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const synthesisRequestKey = useRef<string | null>(null);
+  const pendingSubmission = useRef<{turn: number; submissionId: string; thought: string} | null>(null);
 
   const applyCanonicalPayload = useCallback((loaded: DailyPayload) => {
     const destination=canonicalSessionRoute(loaded.session.status,sessionId,Boolean(loaded.session.adaptive));
@@ -28,20 +29,27 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!thought.trim() || evaluating) return;
+    if (!thought.trim() || evaluating || payload?.session.evaluation?.paused || payload?.session.evaluation?.inProgress || !payload) return;
+    pendingSubmission.current ??= {turn: payload.session.turnCount+1,submissionId: crypto.randomUUID(),thought};
     setEvaluating(true);
     setError(null);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const response = await fetch(`/api/play-sessions/${sessionId}/answers`, {
+    let response: Response;
+    try { response = await fetch(`/api/play-sessions/${sessionId}/answers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ thought }),
-    });
+      body: JSON.stringify(pendingSubmission.current),
+    }); } catch { setError("응답을 확인하지 못했습니다. 같은 제출로 다시 확인할 수 있습니다."); setEvaluating(false); return; }
     if (!response.ok) {
       const failure = await response.json().catch(() => ({})) as { error?: string; session?: PublicSessionView };
-      if (failure.session?.adaptive?.paused) {
+      if (failure.session?.evaluation?.paused) {
+        pendingSubmission.current = null;
         setPayload(current => current ? { ...current, session: failure.session! } : current);
         setThought(""); setEvaluating(false); return;
+      }
+      if (["IDEMPOTENCY_CONFLICT","TURN_ALREADY_SUBMITTED","STALE_STATE_VERSION"].includes(failure.error ?? "")) {
+        pendingSubmission.current = null;
+        void loadSession(sessionId).then(applyCanonicalPayload);
       }
       setError(failure.error === "JUDGE_UNAVAILABLE"
         ? "지금은 생각을 살펴보지 못했습니다. 입력은 그대로 두었으니 다시 시도해주세요."
@@ -50,6 +58,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
       return;
     }
     const result = await response.json() as { session: PublicSessionView };
+    pendingSubmission.current = null;
     setPayload((current) => current ? { ...current, session: result.session } : current);
     setThought("");
     setEvaluating(false);
@@ -62,12 +71,12 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   }
 
   async function resumeFeedback() {
-    if (!payload?.session.adaptive?.canResume || evaluating) return;
+    if (!payload?.session.evaluation?.canResume || !payload.session.evaluation.submissionId || evaluating) return;
     setEvaluating(true); setError(null);
     try {
       const response = await fetch(`/api/play-sessions/${sessionId}/evaluation-resume`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expectedStateVersion: payload.session.stateVersion }),
+        body: JSON.stringify({ submissionId: payload.session.evaluation.submissionId,expectedStateVersion: payload.session.stateVersion }),
       });
       const result = await response.json() as { session?: PublicSessionView };
       if (result.session) setPayload(current => current ? { ...current, session: result.session! } : current);
@@ -143,9 +152,9 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const lockable = session.status === "LOCKABLE";
   const adaptiveRevealReady = Boolean(session.adaptive?.canReveal);
   const synthesizing = session.status === "SYNTHESIZING" && Boolean(session.synthesis);
-  const adaptivePending = Boolean(session.adaptive) && (session.status === "ERROR_RECOVERABLE" || session.status === "EVALUATING");
-  const displayedTurn = Math.min(session.turnCount + (lockable || adaptivePending ? 0 : 1), session.maxTurns);
-  const turnLabel = session.adaptive?.paused
+  const evaluationPending = Boolean(session.evaluation?.paused || session.evaluation?.inProgress);
+  const displayedTurn = Math.min(session.turnCount + (lockable || evaluationPending ? 0 : 1), session.maxTurns);
+  const turnLabel = session.evaluation?.paused
     ? `${session.turnCount}번째 생각 피드백이 일시 중지되었습니다`
     : session.correctiveRescueAvailable
     ? `${session.turnCount}개의 생각을 제출했고 정정 도움을 확인하는 중입니다`
@@ -170,7 +179,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
         </section>
       ) : null}
 
-      {latestGuidance && !session.adaptive?.paused ? (
+      {latestGuidance && !session.evaluation?.paused ? (
         <aside className={`guidance-card guidance-${latestGuidance.stage.toLowerCase()}`} aria-label={`${latestGuidance.stage} 도움`}>
           <p className="guidance-label">{adaptiveRevealReady ? "생각 돌아보기" : latestGuidance.stage === "RESCUE" ? "생각의 연결" : "다음 관점"}</p>
           <p>{latestGuidance.text}</p>
@@ -198,7 +207,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           {session.synthesis!.canSkip && !session.synthesis!.canRetryEvaluation && !evaluating ? <button className="secondary-button synthesis-skip" type="button" onClick={skipSynthesis}>정리 없이 공개로 넘어가기</button> : null}
           <p className="attempt-copy">제출 {session.synthesis!.attemptsUsed} / {session.synthesis!.maxSubmissions}</p>
         </section>
-      ) : evaluating ? (
+      ) : evaluating || session.evaluation?.inProgress ? (
         <section className="thinking-panel" aria-live="polite">
           <p className="eyebrow">살펴보기</p>
           <h2>생각을 살펴보는 중…</h2>
@@ -210,11 +219,12 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           <blockquote>{session.representativeThought}</blockquote>
           <button className="primary-button" onClick={lock}>내 생각 잠그고 공개하기</button>
         </section>
-      ) : session.adaptive?.paused ? (
+      ) : session.evaluation?.paused ? (
         <section className="lock-panel" aria-label="피드백 일시 중지">
           <p role="status">생각은 저장되었습니다. 지금은 피드백을 준비하지 못했습니다. 잠시 후 이어가주세요.</p>
           <blockquote aria-label="저장된 생각">{session.thoughts.at(-1)?.text}</blockquote>
-          <button className="primary-button" type="button" disabled={!session.adaptive.canResume} onClick={resumeFeedback}>저장된 생각 피드백 이어가기</button>
+          <button className="primary-button" type="button" disabled={!session.evaluation.canResume} onClick={resumeFeedback}>저장된 생각 피드백 이어가기</button>
+          {session.evaluation.recoveryExhausted ? <p>생각은 보존되어 있습니다. 이번 생각의 피드백 재개 기회를 모두 사용했습니다.</p> : null}
         </section>
       ) : adaptiveRevealReady ? (
         <section className="lock-panel" aria-label="통찰 비교 준비">

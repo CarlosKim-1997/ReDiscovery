@@ -71,7 +71,12 @@ official session may be claimed; historical anonymous auto-merge is forbidden.
 M6-B Supabase Auth / Google-only SSR trusted claims integration is complete;
 M6-C live OAuth/claim smoke PASSED, M6-D identity hardening and M6-E data access
 boundary hardening are complete, and the M6-E live security gate PASSED.
-M7 Abuse / Cost is next and NOT STARTED; M8–M10 remain NOT STARTED.
+M7 Abuse / Cost is OPEN; M7-A implements the product owner's approved paid Judge
+operation admission/replay contract. Strict turn/submission identity, durable
+per-attempt admissions, one explicit recovery round and atomic semantic settlement
+are canonical. Legacy failures preserve accepted answers rather than deleting them.
+Operation provenance blocks implicit cascade deletion while raw text remains
+purgeable. M7-B global budget/Gmail work and M8–M10 remain NOT STARTED.
 v6 remains unscheduled. M5-A adds no score, animation,
 provider call or persistence schema. M5-B adds approved Reveal-only v7 mapping and
 minimal reflective comparison rendering without generated prose;

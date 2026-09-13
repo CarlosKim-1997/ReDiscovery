@@ -2,6 +2,7 @@ import type { ContentVersion, PublicPlay } from "@/domain/content/schema";
 import type { FinalSynthesisAttempt, PlaySession, SubmittedThought } from "@/domain/play/session";
 import type { JudgeAttempt } from "@/ports/judge";
 import type { FinalSynthesisVerifierAttempt } from "@/ports/final-synthesis-verifier";
+import type { JudgeOperationStorePort } from "@/ports/ai-operation";
 
 interface AiRunBase { readonly id:string; readonly sessionId?:string; readonly contentVersionId:string; readonly datasetVersion?:string; readonly createdAt:Date }
 export interface JudgeAiRunRecord extends AiRunBase,JudgeAttempt { readonly purpose:"JUDGE"; readonly answerId?:string }
@@ -16,7 +17,7 @@ export type ReserveSynthesisRetryResult=
   |{readonly kind:"RESERVED";readonly session:PlaySession;readonly attempt:FinalSynthesisAttempt}
   |{readonly kind:"STALE_STATE_VERSION"|"STALE_EVALUATION_GENERATION"|"INVALID_STATE"|"ACTIVE_EVALUATION"};
 
-export interface PrimaryStorePort {
+export interface PrimaryStorePort extends JudgeOperationStorePort {
   resolveDaily(at:Date):Promise<DailyRecord|undefined>;
   getDaily(id:string):Promise<DailyRecord|undefined>;
   getContentVersion(id:string):Promise<ContentVersion|undefined>;

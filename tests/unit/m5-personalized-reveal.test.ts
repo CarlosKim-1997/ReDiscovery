@@ -8,7 +8,8 @@ import { approvedContentSchema } from "@/domain/content/schema";
 import { projectPersonalizedConnection } from "@/domain/reveal/personalized-connection";
 import type { NodeDiscovery, PlaySession } from "@/domain/play/session";
 import type { NodeStatus } from "@/domain/play/vocabulary";
-import { answer, finishReveal, getOwned, reveal, startOfficial } from "@/application/play/daily-game";
+import { finishReveal, getOwned, reveal, startOfficial } from "@/application/play/daily-game";
+import { answer } from "../support/judge-submission";
 import { personalizedRevealFixture } from "../support/personalized-reveal-fixture";
 import { adaptiveRuntimeFixture, fixtureAttempt } from "../support/adaptive-runtime-fixture";
 

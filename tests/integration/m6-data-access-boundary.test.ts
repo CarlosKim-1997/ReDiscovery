@@ -5,7 +5,7 @@ import { assertE2eFixtureSafety } from "../support/e2e-fixture-safety";
 
 const url = process.env.DATABASE_URL;
 const suite = url ? describe : describe.skip;
-const tables = ["accounts", "ai_runs", "anonymous_devices", "content_items", "content_versions", "daily_completions", "daily_schedule", "final_synthesis_attempts", "guidance_events", "node_discoveries", "play_sessions", "schema_migrations", "user_answers"].sort();
+const tables = ["accounts", "ai_operations", "ai_runs", "anonymous_devices", "content_items", "content_versions", "daily_completions", "daily_schedule", "final_synthesis_attempts", "guidance_events", "node_discoveries", "play_sessions", "schema_migrations", "user_answers"].sort();
 const functions = ["reject_approved_content_version_mutation", "reject_play_session_binding_mutation", "utf16_code_unit_length", "protect_final_synthesis_attempt_authority", "enforce_verified_synthesis_lock_evidence"].sort();
 const migration = "202609130003_m6_data_access_boundary.sql";
 
@@ -22,7 +22,8 @@ suite("M6 server-mediated database boundary", () => {
       IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
     END $$;
     GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-    GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+    GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+    GRANT ALL ON ${tables.filter(t=>t!=="ai_operations").map(t=>"public."+t).join(",")} TO anon, authenticated;
     GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
@@ -42,7 +43,7 @@ suite("M6 server-mediated database boundary", () => {
     }
     expect(await sql`SELECT policyname FROM pg_policies WHERE schemaname='public'`).toHaveLength(0);
     const ledger = await sql<{ name: string }[]>`SELECT name FROM schema_migrations ORDER BY name`;
-    expect(ledger).toHaveLength(10); expect(ledger.at(-1)?.name).toBe(migration);
+    expect(ledger).toHaveLength(11); expect(ledger.at(-1)?.name).toBe("202609130004_m7_paid_operations.sql");
   });
 
   it.each(["anon", "authenticated"])("denies all direct table CRUD for %s, not merely empty-row visibility", async role => {

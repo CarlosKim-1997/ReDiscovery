@@ -17,6 +17,7 @@ export interface PublicSessionView {
   readonly representativeThought?: string;
   readonly revealCompleted: boolean;
   readonly stateVersion: number;
+  readonly evaluation?: Readonly<{submissionId?: string; inProgress: boolean; paused: boolean; canResume: boolean; recoveryExhausted: boolean}>;
   readonly adaptive?: Readonly<{ learnerState: LearnerState; guidanceAction?: GuidanceAction; targetNode?: string; text?: string; canAnswer: boolean; canReveal: boolean; canResume: boolean; paused: boolean }>;
   readonly synthesis?: Readonly<{
     enabled: true;
@@ -55,6 +56,13 @@ export function toPublicSessionView(
     ...(representativeEvidence ? { representativeThought: resolveEvidence(session, representativeEvidence) } : {}),
     revealCompleted: session.revealCompleted,
     stateVersion: session.stateVersion,
+    ...(session.judgeEvaluation ? {evaluation: {
+      ...(session.thoughts.at(-1)?.submissionId ? {submissionId: session.thoughts.at(-1)!.submissionId!} : {}),
+      inProgress: session.judgeEvaluation.status === "EVALUATING" && (!now || !session.judgeEvaluation.leaseExpiresAt || session.judgeEvaluation.leaseExpiresAt.getTime() > now.getTime()),
+      paused: session.judgeEvaluation.status === "RECOVERABLE" || session.judgeEvaluation.status === "RECOVERY_EXHAUSTED" || (session.judgeEvaluation.status === "EVALUATING" && Boolean(now && session.judgeEvaluation.leaseExpiresAt && session.judgeEvaluation.leaseExpiresAt.getTime() <= now.getTime())),
+      canResume: session.judgeEvaluation.recoveryCount === 0 && (session.judgeEvaluation.status === "RECOVERABLE" || (session.judgeEvaluation.status === "EVALUATING" && Boolean(now && session.judgeEvaluation.leaseExpiresAt && session.judgeEvaluation.leaseExpiresAt.getTime() <= now.getTime()))),
+      recoveryExhausted: session.judgeEvaluation.status === "RECOVERY_EXHAUSTED",
+    }} : {}),
     ...("adaptive_guidance" in policy ? { adaptive: {
       learnerState: resolveLearnerState(session.discoveries, policy),
       ...(session.turnCount > 0 && session.status !== "EVALUATING" && session.status !== "ERROR_RECOVERABLE" ? adaptiveFeedback(session, policy) : {}),

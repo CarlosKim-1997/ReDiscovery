@@ -50,10 +50,15 @@ export class JudgeExecutionError extends Error {
 }
 
 export interface JudgePort {
+  readonly admissionMetadata?: { readonly provider: string; readonly model: string; readonly promptVersion: string };
   evaluate(input: {
     readonly rubric: JudgeRubric;
     readonly currentAnswer: string;
     readonly priorConfirmedState: readonly NodeDiscovery[];
     readonly lastGuidance?: string;
+    readonly lifecycle?: {
+      beforeAttempt(attempt: number): Promise<void>;
+      failedAttempt(attempt: JudgeAttempt, ambiguous: boolean): Promise<void>;
+    };
   }): Promise<JudgeExecution>;
 }

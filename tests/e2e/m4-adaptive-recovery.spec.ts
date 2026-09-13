@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { answer, finishReveal, getOwned, reveal, startOfficial } from "../../src/application/play/daily-game";
-import { AdaptiveEvaluationPausedError, resumeAdaptiveEvaluation, SemanticAiUnavailableError } from "../../src/application/play/adaptive-evaluation";
+import { AdaptiveEvaluationPausedError, SemanticAiUnavailableError } from "../../src/application/play/adaptive-evaluation";
+import { resumeJudgeOperation, type JudgeSubmission } from "../../src/application/play/judge-operations";
 import { adaptiveRuntimeFixture, ADAPTIVE_FULL_FIXTURE_ANSWER, fixtureProviderFailure } from "../support/adaptive-runtime-fixture";
 
 for (const interruptedTurn of [1, 2]) {
@@ -16,11 +17,12 @@ for (const interruptedTurn of [1, 2]) {
         if (path === "/api/play-sessions") return route.fulfill({ json: await startOfficial(f.deps, "device") });
         const id = f.session().id;
         if (path.endsWith("/answers")) {
-          const result = await answer(f.deps, "device", id, (request.postDataJSON() as { thought: string }).thought);
+          const result = await answer(f.deps, "device", id, request.postDataJSON() as JudgeSubmission);
           return route.fulfill({ json: result });
         }
         if (path.endsWith("/evaluation-resume")) {
-          const result = await resumeAdaptiveEvaluation(f.deps, "device", id, (request.postDataJSON() as { expectedStateVersion: number }).expectedStateVersion);
+          const input = request.postDataJSON() as { submissionId: string; expectedStateVersion: number };
+          const result = await resumeJudgeOperation(f.deps, "device", id, input.submissionId, input.expectedStateVersion);
           return route.fulfill({ json: result });
         }
         if (path.endsWith("/reveal")) {

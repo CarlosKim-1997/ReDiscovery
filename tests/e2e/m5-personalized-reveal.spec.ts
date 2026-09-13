@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { answer, finishReveal, getOwned, reveal, startOfficial } from "../../src/application/play/daily-game";
+import { finishReveal, getOwned, reveal, startOfficial } from "../../src/application/play/daily-game";
+import { answer } from "../support/judge-submission";
 import { personalizedRevealFixture } from "../support/personalized-reveal-fixture";
 import { fixtureAttempt } from "../support/adaptive-runtime-fixture";
 
