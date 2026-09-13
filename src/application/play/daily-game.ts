@@ -17,7 +17,13 @@ import { evaluateAdaptiveAnswer, requireSemanticAiReadiness } from "./adaptive-e
 
 export interface DailyGameDeps { readonly clock:ClockPort; readonly identity:IdentityPort; readonly judge:JudgePort; readonly store:PrimaryStorePort; readonly readiness?:SemanticAiReadinessPort }
 export async function currentDaily(deps:DailyGameDeps){return deps.store.resolveDaily(deps.clock.now());}
-export async function resolveDevice(deps:DailyGameDeps,token?:string){
+export type DeviceResolution = { kind: "ACTIVE"; device: { id: string } } | { kind: "MISSING" } | { kind: "STALE" };
+export async function resolveExistingDevice(deps: Pick<DailyGameDeps, "identity" | "store">, token?: string): Promise<DeviceResolution> {
+  if (!token) return { kind: "MISSING" };
+  const device = await deps.store.findActiveDevice(deps.identity.hashToken(token));
+  return device ? { kind: "ACTIVE", device } : { kind: "STALE" };
+}
+export async function ensureDevice(deps:DailyGameDeps,token?:string){
   if(token){const existing=await deps.store.findActiveDevice(deps.identity.hashToken(token));if(existing){await deps.store.touchDevice(existing.id);return{device:existing};}}
   const freshToken=deps.identity.randomToken();const device=await deps.store.createDevice(deps.identity.hashToken(freshToken));return{device,token:freshToken};
 }

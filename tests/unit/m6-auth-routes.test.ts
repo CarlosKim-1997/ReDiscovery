@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authFixture, AUTH_FIXTURE_DEVICE as device, AUTH_FIXTURE_SESSION as session, AUTH_FIXTURE_TIME as at, fixtureId } from "../support/m6-auth-fixture";
 
-const state = vi.hoisted(() => ({ deps: undefined as unknown, configured: true, cookies: new Map<string, string>(), options: new Map<string, unknown>() }));
+const state = vi.hoisted(() => ({ deps: undefined as unknown, configured: true, deviceActive: true, cookies: new Map<string, string>(), options: new Map<string, unknown>() }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => state.cookies.has(name) ? { value: state.cookies.get(name) } : undefined, delete: (name: string) => state.cookies.delete(name), set: (name: string, value: string, options: unknown) => { state.cookies.set(name, value); state.options.set(name, options); } }) }));
 vi.mock("@/server/auth", async () => ({
   ...(await import("@/adapters/supabase-auth/pending-claim")), ...(await import("@/server/auth-policy")),
   authConfiguration: () => state.configured ? { url: "https://project.supabase.co", key: "test-publishable", origin: "https://app.test", secret: "test-only-secret-not-a-live-credential" } : undefined,
   authenticationDependencies: async () => state.deps,
 }));
-vi.mock("@/app/api/_device", () => ({ currentDevice: async () => ({ id: device }) }));
+vi.mock("@/app/api/_device", () => ({ currentDevice: async () => state.deviceActive ? ({ id: device }) : undefined }));
 import { POST as start } from "@/app/auth/google/route";
 import { GET as callback } from "@/app/auth/callback/route";
 import { POST as logout } from "@/app/auth/logout/route";
@@ -18,7 +18,24 @@ import { sealPendingClaim, PENDING_CLAIM_COOKIE } from "@/adapters/supabase-auth
 const request = (path: string, form: Record<string, string> = {}, origin = "https://app.test") => new Request(`https://app.test${path}`, { method: "POST", headers: { origin }, body: new URLSearchParams(form) });
 describe("M6 fake-auth HTTP boundary", () => {
   let f: ReturnType<typeof authFixture>;
-  beforeEach(() => { f = authFixture(); state.deps = f.deps; state.configured = true; state.cookies.clear(); state.options.clear(); });
+  beforeEach(() => { f = authFixture(); state.deps = f.deps; state.configured = true; state.deviceActive = true; state.cookies.clear(); state.options.clear(); });
+  it("unresolved anonymous identity rejects existing-session OAuth intent before provider start", async () => {
+    state.deviceActive = false;
+    expect((await start(request("/auth/google", { sessionId: session }))).status).toBe(400);
+    expect(f.auth.callbacks).toEqual([]); expect(f.claims).toEqual([]); expect(state.options.size).toBe(0);
+  });
+  it("ownership proof lost after start preserves verified login with zero claims", async () => {
+    await start(request("/auth/google", { sessionId: session })); state.deviceActive = false;
+    expect((await callback(new Request("https://app.test/auth/callback?code=valid"))).headers.get("location")).toBe("https://app.test/?auth=claim_not_applied");
+    expect(f.auth.identity).toBeDefined(); expect(f.claims).toEqual([]); expect(f.sessions.get(session)?.accountId).toBeUndefined(); expect(state.cookies.size).toBe(0);
+    expect(await (await status(new Request(`https://app.test/api/auth/status?sessionId=${session}`))).json()).toMatchObject({ authenticated: true, currentSessionClaimed: false });
+  });
+  it("login without session intent does not require anonymous ownership", async () => {
+    state.deviceActive = false;
+    expect((await start(request("/auth/google"))).status).toBe(303);
+    expect((await callback(new Request("https://app.test/auth/callback?code=valid"))).headers.get("location")).toBe("https://app.test/?auth=signed_in");
+    expect(f.claims).toEqual([]); expect(state.options.size).toBe(0);
+  });
   it("sets one safe server-controlled intent and fixed callback", async () => {
     const response = await start(request("/auth/google", { sessionId: session }));
     expect(response.status).toBe(303); expect(f.auth.callbacks).toEqual(["https://app.test/auth/callback"]);

@@ -14,8 +14,8 @@ export async function GET(request: Request) {
     if (query.has("error") || query.has("returnTo")) throw new Error("AUTH_CALLBACK_FAILED");
     const deps = await authenticationDependencies();
     const pending = readPendingClaim(jar.get(PENDING_CLAIM_COOKIE)?.value, deps.clock.now(), configuration.secret);
-    const device = await currentDevice();
-    const result = await completeAuthentication(deps, query.get("code") ?? undefined, pending, device.id);
+    const device = pending ? await currentDevice() : undefined;
+    const result = await completeAuthentication(deps, query.get("code") ?? undefined, pending, device?.id);
     const destination = new URL(result.destination, configuration.origin);
     destination.searchParams.set("auth", result.claimRequested && !result.claimApplied ? "claim_not_applied" : "signed_in");
     return NextResponse.redirect(destination, { status: 303, headers: { "Cache-Control": "private, no-store" } });

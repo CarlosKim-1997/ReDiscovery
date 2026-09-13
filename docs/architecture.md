@@ -316,3 +316,13 @@ cross-site start/logout. Callback clears intent, preserves login on claim reject
 and never enumerates history. UI receives only safe account ID/claim state, no
 tokens. No new DB coupling, auth-based gameplay ownership rewrite or live OAuth
 verification; M6-C is next and M6 remains open.
+
+M6-D separates resolveExistingDevice/resolveCurrentDevice (ACTIVE/MISSING/STALE,
+lookup only) from ensureDevice/ensureCurrentDevice (creation-capable). Existing
+session operations and auth claim checks use resolve-only currentDevice convenience;
+only explicit new-session POST ensures identity. Public Daily GET needs no device.
+Lookup errors propagate; stale proof never triggers history lookup or ownership
+reassignment. Callback retains verified login with zero claims if device proof is
+lost. Supabase config is root-only and rejects service paths/query/fragment/URL
+credentials before OAuth. AUTH_COOKIE_SECRET continuity is an operational deployment
+contract, not runtime prediction. M6 stays OPEN pending closure review.

@@ -8,7 +8,7 @@ const body = z.object({ expectedStateVersion: z.number().int().nonnegative() }).
 
 export async function POST(request: Request, { params }: { params: Promise<{ session: string }> }) {
   try {
-    const device = await currentDevice();
+    const device = await currentDevice();if (!device) return Response.json({error:"SESSION_NOT_FOUND"},{status:404,headers:{"Cache-Control":"no-store"}});
     const input = body.parse(await request.json());
     const result = await resumeAdaptiveEvaluation(services, device.id, (await params).session, input.expectedStateVersion);
     return Response.json(result ?? { error: "SESSION_NOT_FOUND" }, { status: result ? 200 : 404, headers: { "Cache-Control": "no-store" } });

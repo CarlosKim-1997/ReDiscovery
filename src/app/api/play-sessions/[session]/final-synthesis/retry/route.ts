@@ -9,7 +9,7 @@ const body = z.object({ expectedStateVersion: z.number().int().nonnegative() }).
 
 export async function POST(request: Request, { params }: { params: Promise<{ session: string }> }) {
   try {
-    const device = await currentDevice(); const sessionId = (await params).session; const parsed = body.parse(await request.json());
+    const device = await currentDevice();if (!device) return Response.json({error:"SESSION_NOT_FOUND"},{status:404,headers:{"Cache-Control":"no-store"}}); const sessionId = (await params).session; const parsed = body.parse(await request.json());
     await retryCurrentFinalSynthesisEvaluation({ ...services, verifier: services.finalSynthesisVerifier }, { deviceId: device.id, sessionId, ...parsed });
     const payload = await getOwned(services, device.id, sessionId);
     return Response.json(payload ?? { error: "SESSION_NOT_FOUND" }, { status: payload ? 200 : 404 });

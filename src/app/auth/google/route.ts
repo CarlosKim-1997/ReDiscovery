@@ -16,9 +16,10 @@ export async function POST(request: Request) {
     const form = await request.formData();
     if (form.has("returnTo")) throw new Error("INVALID_RETURN_DESTINATION");
     const deps = await authenticationDependencies();
-    const device = await currentDevice();
     const intent = form.get("sessionId");
-    const sessionId = intent === null ? undefined : await validateClaimIntent(deps, String(intent), device.id);
+    const device = intent === null ? undefined : await currentDevice();
+    if (intent !== null && !device) throw new Error("INVALID_CURRENT_SESSION");
+    const sessionId = intent === null ? undefined : await validateClaimIntent(deps, String(intent), device!.id);
     const destination = await deps.auth.startGoogleLogin(`${configuration.origin}/auth/callback`);
     const oauthUrl = new URL(destination);
     if (oauthUrl.origin !== new URL(configuration.url).origin || oauthUrl.pathname !== "/auth/v1/authorize" || oauthUrl.searchParams.get("provider") !== "google") throw new Error("AUTH_START_FAILED");

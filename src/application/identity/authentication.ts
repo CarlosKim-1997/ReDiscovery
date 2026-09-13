@@ -25,7 +25,7 @@ export async function validateClaimIntent(deps: AuthenticationDependencies, sess
   return id;
 }
 
-export async function completeAuthentication(deps: AuthenticationDependencies, code: string | undefined, pendingSessionId: string | undefined, deviceId: string) {
+export async function completeAuthentication(deps: AuthenticationDependencies, code: string | undefined, pendingSessionId: string | undefined, deviceId: string | undefined) {
   if (pendingSessionId && !code) throw new Error("AUTH_CODE_REQUIRED");
   if (code) {
     try { await deps.auth.exchangeCode(code); }
@@ -38,6 +38,7 @@ export async function completeAuthentication(deps: AuthenticationDependencies, c
   const account = await authenticatedAccount(deps);
   if (!account) throw new Error("UNAUTHENTICATED");
   if (!pendingSessionId) return { destination: "/", claimApplied: false, claimRequested: false };
+  if (!deviceId) return { destination: "/", claimApplied: false, claimRequested: true };
   // Authentication success is not undone by claim rejection. No fallback/history.
   try {
     const result = await claimCurrentOfficialSession(deps, account, pendingSessionId, deviceId);

@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { parseServerConfig } from "@/config/schema";
 
 describe("server configuration", () => {
+  it.each(["https://project.supabase.co", "https://project.supabase.co/", "http://localhost:54321", "http://127.0.0.1:54321/"])("accepts Supabase root %s", url => {
+    expect(parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: url }).NEXT_PUBLIC_SUPABASE_URL).toBe(url);
+  });
+  it.each(["/rest/v1", "/rest/v1/foo", "/auth/v1", "/other", "?query=value", "#fragment", "?", "#"])("rejects non-root Supabase URL shape %s", suffix => {
+    expect(() => parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: `https://project.supabase.co${suffix}` })).toThrow("NEXT_PUBLIC_SUPABASE_URL must be the Supabase project root URL");
+  });
+  it("rejects embedded credentials without exposing them", () => {
+    try { parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: "https://private-user:private-password@project.supabase.co" }); throw new Error("expected rejection"); }
+    catch (error) { expect(String(error)).toContain("project root URL"); expect(String(error)).not.toMatch(/private-user|private-password/); }
+  });
+  it.each(["http://remote.test", "ftp://localhost"])("preserves protocol/loopback restriction %s", url => {
+    expect(() => parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: url })).toThrow("NEXT_PUBLIC_SUPABASE_URL");
+  });
   it("accepts optional publishable SSR auth config but rejects unsafe origin/service keys", () => {
     expect(parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test", AUTH_APP_ORIGIN: "https://app.test", AUTH_COOKIE_SECRET: "test-only-secret-at-least-32-characters" }).AUTH_APP_ORIGIN).toBe("https://app.test");
     expect(() => parseServerConfig({ AUTH_APP_ORIGIN: "https://app.test/unsafe" })).toThrow("AUTH_APP_ORIGIN");

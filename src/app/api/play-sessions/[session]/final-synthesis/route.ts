@@ -9,7 +9,7 @@ const body = z.object({ text: z.string().min(1), expectedStateVersion: z.number(
 
 export async function POST(request: Request, { params }: { params: Promise<{ session: string }> }) {
   try {
-    const device = await currentDevice();
+    const device = await currentDevice();if (!device) return Response.json({error:"SESSION_NOT_FOUND"},{status:404,headers:{"Cache-Control":"no-store"}});
     const sessionId = (await params).session;
     const idempotencyKey = request.headers.get("Idempotency-Key");
     if (!idempotencyKey || idempotencyKey.length > 200) return failure("INVALID_REQUEST", 400);

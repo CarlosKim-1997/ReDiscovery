@@ -10,7 +10,12 @@ const serverConfigSchema = z.object({
   PRIMARY_JUDGE_MODEL: z.string().min(1).max(100).optional(),
   ADJUDICATION_MODEL: z.string().min(1).max(100).optional(),
   REVEAL_COMPARISON_MODEL: z.string().min(1).max(100).optional(),
-  NEXT_PUBLIC_SUPABASE_URL: z.url().refine(value => value.startsWith("https://") || (value.startsWith("http://") && ["localhost", "127.0.0.1"].includes(new URL(value).hostname))).optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.url().refine(value => value.startsWith("https://") || (value.startsWith("http://") && ["localhost", "127.0.0.1"].includes(new URL(value).hostname))).refine(value => {
+    try {
+      const url = new URL(value);
+      return url.pathname === "/" && !url.search && !url.hash && !url.username && !url.password && !value.includes("?") && !value.includes("#");
+    } catch { return false; }
+  }, "NEXT_PUBLIC_SUPABASE_URL must be the Supabase project root URL").optional(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().startsWith("sb_publishable_").optional(),
   AUTH_APP_ORIGIN: z.url().refine(value => new URL(value).origin === value && (value.startsWith("https://") || ["localhost", "127.0.0.1"].includes(new URL(value).hostname))).optional(),
   AUTH_COOKIE_SECRET: z.string().min(32).optional(),
@@ -28,7 +33,8 @@ export function parseServerConfig(environment: Readonly<Record<string, string | 
   const result = serverConfigSchema.safeParse(environment);
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
-    throw new Error(`Invalid server configuration: ${keys.join(", ")}`);
+    const rootUrlFailure = result.error.issues.some(issue => issue.message === "NEXT_PUBLIC_SUPABASE_URL must be the Supabase project root URL");
+    throw new Error(`Invalid server configuration: ${keys.join(", ")}${rootUrlFailure ? "; NEXT_PUBLIC_SUPABASE_URL must be the Supabase project root URL" : ""}`);
   }
   return Object.freeze(result.data);
 }
