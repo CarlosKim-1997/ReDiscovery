@@ -304,3 +304,15 @@ gameplay state_version unchanged so in-flight Judge reservations remain valid;
 normal transitions leave account columns untouched. No historical history query/merge, public
 client-asserted auth route or auth SDK exists. M6 remains open; trusted authentication
 integration and login UX belong to M6-B.
+
+M6-B selects Supabase Auth and Google-only OAuth while preserving provider-neutral
+TrustedAuthPort/Account. SDKs stay in adapters; getClaims verifies authenticated
+JWT sub and maps supabase:<sub>, never email/session-cookie user. Route-local SSR
+cookie clients and the exact Next.js src/proxy.ts server entry handle refresh;
+Proxy never queries Accounts or blocks anonymous play. Signed 10-minute HttpOnly
+pending claim carries one explicit session ID, revalidated against the anonymous
+device at callback. Fixed app origin/Origin checks prevent open redirects and
+cross-site start/logout. Callback clears intent, preserves login on claim rejection
+and never enumerates history. UI receives only safe account ID/claim state, no
+tokens. No new DB coupling, auth-based gameplay ownership rewrite or live OAuth
+verification; M6-C is next and M6 remains open.

@@ -10,6 +10,10 @@ const serverConfigSchema = z.object({
   PRIMARY_JUDGE_MODEL: z.string().min(1).max(100).optional(),
   ADJUDICATION_MODEL: z.string().min(1).max(100).optional(),
   REVEAL_COMPARISON_MODEL: z.string().min(1).max(100).optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.url().refine(value => value.startsWith("https://") || (value.startsWith("http://") && ["localhost", "127.0.0.1"].includes(new URL(value).hostname))).optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().startsWith("sb_publishable_").optional(),
+  AUTH_APP_ORIGIN: z.url().refine(value => new URL(value).origin === value && (value.startsWith("https://") || ["localhost", "127.0.0.1"].includes(new URL(value).hostname))).optional(),
+  AUTH_COOKIE_SECRET: z.string().min(32).optional(),
   TEST_FIXED_NOW: z.iso.datetime({ offset: true }).optional(),
 }).superRefine((value, context) => {
   if (value.JUDGE_ADAPTER === "openai" && !value.OPENAI_API_KEY) context.addIssue({ code: "custom", path: ["OPENAI_API_KEY"], message: "Required for OpenAI Judge" });

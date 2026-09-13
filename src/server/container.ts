@@ -8,6 +8,7 @@ import { FinalSynthesisEntryFakeJudgeAdapter } from "@/adapters/fake-judge/final
 import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres-primary-store";
 import { NodeIdentityAdapter } from "@/adapters/node-identity/node-identity";
 import type { IdentityPort } from "@/ports/identity";
+import type { AccountStorePort } from "@/ports/account-store";
 import { OpenAIJudgeAdapter, OpenAIResponsesJudgeTransport } from "@/adapters/openai-judge/openai-judge";
 import { makeClock } from "@/server/clock";
 import type { FinalSynthesisVerifierPort } from "@/ports/final-synthesis-verifier";
@@ -27,7 +28,7 @@ function makeJudge():JudgePort {
 const clock = makeClock(serverConfig);
 const readiness = makeSemanticAiReadiness(serverConfig, clock);
 
-export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; readiness:SemanticAiReadinessPort; finalSynthesisVerifier:FinalSynthesisVerifierPort; store: PrimaryStorePort }> = Object.freeze({
+export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; readiness:SemanticAiReadinessPort; finalSynthesisVerifier:FinalSynthesisVerifierPort; store: PrimaryStorePort & AccountStorePort }> = Object.freeze({
   clock,
   readiness,
   identity: new NodeIdentityAdapter(),

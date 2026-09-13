@@ -47,4 +47,9 @@ describe("architecture enforcement", () => {
   it("allows SDK imports inside adapters", async () => {
     expect(await ruleIds('import OpenAI from "openai"; export const Client = OpenAI;', "src/adapters/openai/probe.ts")).toEqual([]);
   });
+  it("allows only the exact Next.js proxy entry to use server infrastructure", async () => {
+    expect(await ruleIds('export { refreshAuthCookies } from "@/adapters/supabase-auth/proxy";', "src/proxy.ts")).toEqual([]);
+    expect(await ruleIds('export * from "@supabase/ssr";', "src/proxy.ts")).toContain("architecture/boundaries");
+    expect(await ruleIds('export * from "@supabase/ssr";', "src/application/proxy.ts")).toContain("architecture/boundaries");
+  });
 });

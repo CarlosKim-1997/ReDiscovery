@@ -30,7 +30,10 @@ export default {
         const filename = context.filename.replaceAll("\\", "/");
         const root = `${context.cwd.replaceAll("\\", "/")}/src/`;
         if (!filename.startsWith(root)) return {};
-        const from = filename.slice(root.length).split("/")[0];
+        const relative = filename.slice(root.length);
+        // Next.js requires this single framework entry beside src/app. Treat
+        // only that exact file as server infrastructure, never a core SDK bridge.
+        const from = relative === "proxy.ts" ? "server" : relative.split("/")[0];
 
         function check(node, source) {
           if (typeof source !== "string") {

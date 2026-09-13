@@ -67,7 +67,9 @@ choreography are complete. Skip and reduced-motion bypass are supported.
 M6 Identity is OPEN; M6-A provider-neutral Account and explicit single official
 session claim foundation is complete. Only the explicitly current device-owned
 official session may be claimed; historical anonymous auto-merge is forbidden.
-M6-B Trusted Authentication Integration + Login UX is next and NOT STARTED.
+M6-B Supabase Auth / Google-only SSR trusted claims integration is complete,
+provider-free. No live OAuth is verified. M6-C Google OAuth Configuration + Live
+Claim Smoke + M6 Closure is next and NOT STARTED.
 M7–M10 remain NOT STARTED; v6 remains unscheduled. M5-A adds no score, animation,
 provider call or persistence schema. M5-B adds approved Reveal-only v7 mapping and
 minimal reflective comparison rendering without generated prose;

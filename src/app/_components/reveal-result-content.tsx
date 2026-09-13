@@ -1,7 +1,8 @@
 import type { RevealView } from "./session-types";
 import { PersonalizedRevealSection } from "./personalized-reveal-section";
+import { AuthControls } from "./auth-controls";
 
-export function RevealResultContent({ reveal }: { readonly reveal: RevealView }) {
+export function RevealResultContent({ reveal, sessionId }: { readonly reveal: RevealView; readonly sessionId?: string }) {
   return <>
     <p className="eyebrow">오늘의 연결</p><h1>{reveal.theory}</h1>
     <p className="historical-line">{reveal.year} · {reveal.person}</p>
@@ -15,5 +16,6 @@ export function RevealResultContent({ reveal }: { readonly reveal: RevealView })
     {!reveal.personalizedConnection ? <p className="guidance-provenance">
       {reveal.discoveryOutcome === "UNVERIFIED_REVEAL" ? "잠금 없이 공개까지 살펴보았습니다." : reveal.substantialGuidanceUsed ? "도움을 통해 핵심 구조와 만났습니다." : "핵심 구조를 스스로 발견했습니다."}
     </p> : null}
+    {sessionId ? <AuthControls key={sessionId} sessionId={sessionId} /> : null}
   </>;
 }

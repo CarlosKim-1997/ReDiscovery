@@ -36,7 +36,7 @@ export function ResultScreen({ sessionId }: { readonly sessionId: string }) {
 
   return (
     <main className="page-shell result-shell">
-      <RevealResultContent reveal={reveal} />
+      <RevealResultContent reveal={reveal} sessionId={sessionId} />
       <button className="secondary-button" onClick={() => router.push("/")}>처음으로</button>
     </main>
   );

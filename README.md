@@ -8,7 +8,8 @@ M4 Adaptive Guidance Runtime은 CLOSED이다. M4-A/B/C와 M4-D의 bounded live r
 M5-A deterministic outcome foundation과 M5-B evidence-grounded personalized Reveal을 구현했다.
 M5-C 기본 3초 Reveal choreography와 skip/reduced-motion까지 완료했다.
 M6 Identity는 OPEN이며 M6-A provider-neutral Account와 명시한 공식 세션 하나만 claim하는 기반을 구현했다.
-실제 로그인은 아직 없으며 다음 gate는 M6-B Trusted Authentication Integration + Login UX이다.
+M6-B Supabase Auth/Google 전용 로그인 및 verified claims SSR 경계를 구현했다.
+실제 OAuth는 아직 검증하지 않았으며 다음 gate는 M6-C Google OAuth Configuration + Live Claim Smoke + M6 Closure이다.
 Daily schedule publication/alpha activation은 후속 milestone으로 미룬다.
 Conway v6/v7은 여전히 unscheduled이며
 semantic AI 없이 진행하는 degraded mode는 허용하지 않는다.
@@ -139,7 +140,7 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [M3 Judge / Semantic Sensor](docs/milestones/M3.md): CLOSED product foundation and preserved verifier research
 - [M4 Adaptive Guidance Runtime](docs/milestones/M4.md): CLOSED; M4-A/B/C/D complete
 - [M5 Reveal / Personalization](docs/milestones/M5.md): CLOSED; M5-A/B/C complete
-- [M6 Identity](docs/milestones/M6.md): OPEN; M6-A complete; M6-B next, not started
+- [M6 Identity](docs/milestones/M6.md): OPEN; M6-A/B complete; M6-C next, not started
 - [Runtime v1 product direction](docs/decisions/0017-product-runtime-v1-adaptive-guidance.md): adaptive guidance over perfect verification
 - [Judge v1 Luna baseline](docs/evals/judge-v1-luna-baseline.md): frozen first live-provider result
 - [Judge v2 semantic contract](docs/evals/judge-v2-semantic-contract.md): independent status/ambiguity rules

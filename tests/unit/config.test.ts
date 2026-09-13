@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseServerConfig } from "@/config/schema";
 
 describe("server configuration", () => {
+  it("accepts optional publishable SSR auth config but rejects unsafe origin/service keys", () => {
+    expect(parseServerConfig({ NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test", AUTH_APP_ORIGIN: "https://app.test", AUTH_COOKIE_SECRET: "test-only-secret-at-least-32-characters" }).AUTH_APP_ORIGIN).toBe("https://app.test");
+    expect(() => parseServerConfig({ AUTH_APP_ORIGIN: "https://app.test/unsafe" })).toThrow("AUTH_APP_ORIGIN");
+    expect(() => parseServerConfig({ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_secret_not_allowed" })).toThrow("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  });
   it("boots locally without credentials", () => {
     expect(parseServerConfig({})).toEqual({
       NODE_ENV: "development", APP_ENV: "local", CONFIG_VERSION: "m0-v1", DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres", JUDGE_ADAPTER: "fake",

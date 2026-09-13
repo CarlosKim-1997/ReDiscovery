@@ -38,5 +38,5 @@ export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
   }, [router, sessionId]);
   if (error) return <main className="page-shell"><p role="alert">{error}</p></main>;
   if (!authorized || authorized.sessionId !== sessionId) return <main className="page-shell reveal-shell"><p className="status-copy">생각을 펼치는 중…</p></main>;
-  return <RevealChoreographyView key={sessionId} reveal={authorized.reveal} reducedMotion={authorized.reducedMotion} onHome={() => router.push("/")} onLegacyComplete={() => { if (authorized.completionPersisted) router.replace(`/result/${sessionId}`); }} />;
+  return <RevealChoreographyView key={sessionId} sessionId={sessionId} reveal={authorized.reveal} reducedMotion={authorized.reducedMotion} onHome={() => router.push("/")} onLegacyComplete={() => { if (authorized.completionPersisted) router.replace(`/result/${sessionId}`); }} />;
 }
