@@ -55,9 +55,10 @@ semantic-sensor definition established by
 supersedes the earlier Final Holdout closure requirement only for the current
 Runtime v1 product milestone; it does not rewrite or pass any historical verifier
 experiment. Final Synthesis remains a preserved research asset and replacement
-seam. M4 is open: M4-A supplies the learner-state, approved Hint Ladder, and default
-`judge-v3` foundation; M4-B wires capability-specific two-turn gameplay. Conway v6
-remains unscheduled/live-disabled: M4-C adds provider readiness and same-answer
-pause/resume, but the separate M4-D Live Readiness Smoke + Runtime Activation gate
-has not begun. Semantic AI is essential; no AI-free degraded mode is permitted.
-M5 and later behavior remains out of scope.
+seam. M4 is closed: M4-A/B/C supply learner state, approved guidance, two-turn
+gameplay, provider readiness and same-answer pause/resume. M4-D verified the real
+`judge-v3` Luna runtime internal-only with exactly three OpenAI requests and no
+retries. Conway v6 remains UNSCHEDULED; Daily publication/alpha activation is
+deferred. Local DB migration/persistence verification remains mandatory before M9.
+Semantic AI is essential; no AI-free degraded mode is permitted.
+M5 Reveal / Personalization is next; M5–M10 remain NOT STARTED.

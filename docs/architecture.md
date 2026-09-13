@@ -258,4 +258,6 @@ migrations change. Apply repository migrations before using adaptive pause in a
 database-backed environment. Public pause exposes saved thoughts and resume
 capability, never fabricated new feedback or provider details. UI has unavailable
 start/retry and persisted-answer resume without new reasoning input or forced
-Reveal. Conway v6 remains unscheduled pending separately authorized M4-D.
+Reveal. M4-D verified the real provider/application path internal-only; Conway v6
+remains unscheduled after M4 closure. Daily publication/alpha activation is deferred,
+and local DB migration/persistence validation is required before M9.
