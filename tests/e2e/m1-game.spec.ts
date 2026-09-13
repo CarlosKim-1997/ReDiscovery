@@ -97,14 +97,21 @@ test("Scenario D: unfinished session resumes after reload", async ({ page }) => 
   await expect(page.getByText("지금까지의 생각 1개")).toBeVisible();
 });
 
-test("Scenario E: Reveal refresh keeps the locked session reachable", async ({ page }) => {
+test("Scenario E: completed Reveal survives reload without replay", async ({ page }) => {
   await start(page);
   await submit(page, full);
+  const id = page.url().split("/").at(-1);
+  const completion = page.waitForResponse(response =>
+    response.url().endsWith(`/api/play-sessions/${id}/reveal`) &&
+    response.request().method() === "POST" && response.ok());
   await page.getByRole("button", { name: "내 생각 잠그고 공개하기" }).click();
   await expect(page).toHaveURL(/\/reveal\//);
+  expect((await (await completion).json()).session.status).toBe("REVEALED");
   await page.reload();
-  await expect(page.getByText("당신의 생각")).toBeVisible();
-  await expect(page).toHaveURL(/\/result\//, { timeout: 10_000 });
+  await expect(page).toHaveURL(`/result/${id}`, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Conway's Law");
+  await expect(page.getByText("1968 · Melvin Conway")).toBeVisible();
+  await expect(page.getByRole("button", { name: "바로 보기" })).toHaveCount(0);
 });
 
 test("Scenario F: reduced motion preserves ordered information and finishes quickly", async ({ page }) => {
