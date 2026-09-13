@@ -3,10 +3,11 @@ import type { EvidenceRef, GuidanceEvent, NodeDiscovery, PlaySession, SubmittedT
 import { PlayRuleError } from "./errors";
 import type { ServerPolicy } from "@/domain/content/schema";
 import { isSemanticLockEligible, mergeSemanticNodeStatus } from "./semantic-state";
+import { adaptiveGuidanceEvent } from "./adaptive-runtime";
 
 export interface PolicyResult {
   readonly session: PlaySession;
-  readonly outcome: "GUIDED" | "LOCKABLE" | "SYNTHESIZING";
+  readonly outcome: "GUIDED" | "LOCKABLE" | "SYNTHESIZING" | "REVEAL_READY";
 }
 
 function supportsFinalSynthesis(policy: ServerPolicy): boolean {
@@ -86,6 +87,16 @@ export function applyJudgeVerdict(evaluating: PlaySession, verdict: JudgeVerdict
   const thought = evaluating.thoughts.at(-1);
   if (!thought) throw new PlayRuleError("INVALID_SESSION_STATE");
   const discoveries = mergeDiscoveries(evaluating, verdict, thought);
+
+  if ("adaptive_guidance" in policy) {
+    if (evaluating.turnCount !== 1 && evaluating.turnCount !== 2) throw new PlayRuleError("INVALID_SESSION_STATE");
+    const guidance = adaptiveGuidanceEvent({ ...evaluating, discoveries }, policy);
+    const status = evaluating.turnCount === 1 ? "THINKING" : "REVEAL_READY";
+    return {
+      session: { ...evaluating, discoveries, stage: guidance.stage, guidance: [...evaluating.guidance, guidance], status },
+      outcome: status === "THINKING" ? "GUIDED" : "REVEAL_READY",
+    };
+  }
 
   if (isSemanticLockEligible(discoveries, policy)) {
     if (supportsFinalSynthesis(policy)) return synthesisEntry({ ...evaluating, discoveries }, "DISCOVERY_READY");

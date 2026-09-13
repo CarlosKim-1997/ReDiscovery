@@ -1,6 +1,7 @@
 import { resolveEvidence, type FinalSynthesisAttempt, type PlaySession } from "@/domain/play/session";
 import { canApplyCorrectiveRescue, selectRepresentativeEvidence } from "@/domain/play/policy";
 import type { ServerPolicy } from "@/domain/content/schema";
+import { adaptiveFeedback } from "@/domain/play/adaptive-runtime";
 
 export interface PublicSessionView {
   readonly id: string;
@@ -14,6 +15,7 @@ export interface PublicSessionView {
   readonly representativeThought?: string;
   readonly revealCompleted: boolean;
   readonly stateVersion: number;
+  readonly adaptive?: ReturnType<typeof adaptiveFeedback> & Readonly<{ canAnswer: boolean; canReveal: boolean }>;
   readonly synthesis?: Readonly<{
     enabled: true;
     attemptsUsed: number;
@@ -51,6 +53,11 @@ export function toPublicSessionView(
     ...(representativeEvidence ? { representativeThought: resolveEvidence(session, representativeEvidence) } : {}),
     revealCompleted: session.revealCompleted,
     stateVersion: session.stateVersion,
+    ...("adaptive_guidance" in policy ? { adaptive: {
+      ...adaptiveFeedback(session, policy),
+      canAnswer: session.status === "THINKING" && session.turnCount < 2,
+      canReveal: session.status === "REVEAL_READY",
+    } } : {}),
     ...(synthesis ? { synthesis } : {}),
   };
 }

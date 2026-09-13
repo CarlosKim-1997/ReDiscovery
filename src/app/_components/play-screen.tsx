@@ -17,7 +17,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const synthesisRequestKey = useRef<string | null>(null);
 
   const applyCanonicalPayload = useCallback((loaded: DailyPayload) => {
-    const destination=canonicalSessionRoute(loaded.session.status,sessionId);
+    const destination=canonicalSessionRoute(loaded.session.status,sessionId,Boolean(loaded.session.adaptive));
     if(destination){router.replace(destination);return;}
     setPayload(loaded);
   },[router,sessionId]);
@@ -121,12 +121,15 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const { daily, session } = payload;
   const latestGuidance = session.guidance.at(-1);
   const lockable = session.status === "LOCKABLE";
+  const adaptiveRevealReady = Boolean(session.adaptive?.canReveal);
   const synthesizing = session.status === "SYNTHESIZING" && Boolean(session.synthesis);
   const displayedTurn = Math.min(session.turnCount + (lockable ? 0 : 1), session.maxTurns);
   const turnLabel = session.correctiveRescueAvailable
     ? `${session.turnCount}개의 생각을 제출했고 정정 도움을 확인하는 중입니다`
     : synthesizing
     ? `${session.turnCount}개의 생각 이후 마지막 정리 중입니다`
+    : adaptiveRevealReady
+    ? "두 번의 생각을 제출했고 이제 통찰을 비교할 수 있습니다"
     : lockable
     ? `${session.turnCount}개의 생각을 제출했고 이제 잠글 수 있습니다`
     : `${displayedTurn}번째 생각 작성 중`;
@@ -146,7 +149,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
 
       {latestGuidance ? (
         <aside className={`guidance-card guidance-${latestGuidance.stage.toLowerCase()}`} aria-label={`${latestGuidance.stage} 도움`}>
-          <p className="guidance-label">{latestGuidance.stage === "RESCUE" ? "생각의 연결" : "다음 관점"}</p>
+          <p className="guidance-label">{adaptiveRevealReady ? "생각 돌아보기" : latestGuidance.stage === "RESCUE" ? "생각의 연결" : "다음 관점"}</p>
           <p>{latestGuidance.text}</p>
         </aside>
       ) : null}
@@ -184,6 +187,10 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           <blockquote>{session.representativeThought}</blockquote>
           <button className="primary-button" onClick={lock}>내 생각 잠그고 공개하기</button>
         </section>
+      ) : adaptiveRevealReady ? (
+        <section className="lock-panel" aria-label="통찰 비교 준비">
+          <button className="primary-button" type="button" onClick={() => router.push(`/reveal/${sessionId}`)}>원래 통찰 공개하기</button>
+        </section>
       ) : session.correctiveRescueAvailable ? (
         <section className="lock-panel" aria-labelledby="recovery-title">
           <p className="eyebrow">정정 도움</p>
@@ -191,7 +198,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           <p>답을 다시 쓰지 않아도 핵심 연결을 확인하고 계속할 수 있습니다.</p>
           <button className="primary-button" onClick={continueWithHelp}>도움으로 이어가기</button>
         </section>
-      ) : (
+      ) : !session.adaptive || session.adaptive.canAnswer ? (
         <form className="composer" onSubmit={submit}>
           <label htmlFor="thought">{daily.question}</label>
           <textarea
@@ -208,7 +215,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
             <button className="primary-button" disabled={!thought.trim()} type="submit">생각 제출하기</button>
           </div>
         </form>
-      )}
+      ) : null}
       {error ? <p className="error-copy" role="alert">{error}</p> : null}
     </main>
   );

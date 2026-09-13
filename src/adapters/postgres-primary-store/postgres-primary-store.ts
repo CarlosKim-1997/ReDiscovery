@@ -1,4 +1,5 @@
 import postgres, { type Sql } from "postgres";
+import { storedGuidanceText } from "@/domain/play/adaptive-runtime";
 import type { ContentVersion, JudgeRubric, PublicPlay, RevealContent, ServerPolicy } from "@/domain/content/schema";
 import type { FinalSynthesisAttempt, PlaySession } from "@/domain/play/session";
 import type { AiRunRecord, DailyRecord, PrimaryStorePort } from "@/ports/primary-store";
@@ -114,7 +115,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
     return {id,dailyId:String(s.daily_id),contentVersionId:String(s.content_version_id),anonymousDeviceId:deviceId,attemptType:s.attempt_type as PlaySession["attemptType"],status:s.status as PlaySession["status"],stage:s.stage as PlaySession["stage"],turnCount:Number(s.turn_count),stateVersion:Number(s.state_version),
       thoughts:answers.map(a=>({id:String(a.id),turn:Number(a.turn),stage:a.stage as PlaySession["stage"],text:String(a.text)})),
       discoveries:nodes.map(n=>({nodeId:String(n.node_id),status:n.status as PlaySession["discoveries"][number]["status"],...(n.first_stage?{firstStage:n.first_stage as PlaySession["stage"]}:{}),...(n.first_answer_id?{evidence:{answerId:String(n.first_answer_id),spanStart:Number(n.evidence_span_start),spanEnd:Number(n.evidence_span_end)}}:{}),...(n.contradiction_answer_id?{contradictionEvidence:{answerId:String(n.contradiction_answer_id),spanStart:Number(n.contradiction_span_start),spanEnd:Number(n.contradiction_span_end)}}:{})})),
-      guidance:events.map(e=>{const key=String(e.guidance_key) as keyof ServerPolicy["guidance"];return{stage:e.stage as Exclude<PlaySession["stage"],"BLIND">,key,text:content.serverPolicy.guidance[key]};}),
+      guidance:events.map(e=>{const key=String(e.guidance_key);return{stage:e.stage as Exclude<PlaySession["stage"],"BLIND">,key,text:storedGuidanceText(key,content.serverPolicy)};}),
       ...(s.lock_answer_id?{lockEvidence:{answerId:String(s.lock_answer_id),spanStart:Number(s.lock_span_start),spanEnd:Number(s.lock_span_end)}}:{}),...(s.synthesis_entry_reason?{synthesisEntryReason:s.synthesis_entry_reason as NonNullable<PlaySession["synthesisEntryReason"]>}:{}),...(s.synthesis_entered_at?{synthesisEnteredAt:new Date(String(s.synthesis_entered_at))}:{}),...(s.synthesis_skipped_at?{synthesisSkippedAt:new Date(String(s.synthesis_skipped_at))}:{}),...(s.verified_synthesis_attempt_id?{verifiedSynthesisAttemptId:String(s.verified_synthesis_attempt_id)}:{}),...(s.locked_at?{lockedAt:new Date(String(s.locked_at))}:{}),revealCompleted:Boolean(s.reveal_completed)};
   }
   private async persist(sql:Sql,v:number,s:PlaySession){

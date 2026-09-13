@@ -208,5 +208,19 @@ node, and approved content text. Conway v6 uses approved content schema v4 and i
 unscheduled; it adds only the server-owned `adaptive_guidance` policy and omits the
 research-era Lock Verifier and Final Synthesis policies. The OpenAI Judge adapter's
 default prompt now selects the already-evaluated, byte-preserved `judge-v3`.
-HTTP/API flow, the existing `GuidanceEvent`, session persistence, provider
-readiness, pause/resume, and Turn 2 transitions remain unchanged for M4-B.
+M4-B branches deterministic policy on `adaptive_guidance`, after the existing
+Judge validation and semantic merge. Turn 1 remains THINKING for every learner
+state; Turn 2 is independently judged and becomes REVEAL_READY, never LOCKABLE or
+SYNTHESIZING. The existing application reservation/version-fencing flow is reused.
+Public projection adds only learner state, approved feedback, optional action and
+target node ID, and answer/Reveal capabilities; rubric and evidence stay private.
+
+Existing `guidance_events` stores keys rather than text. Adaptive keys encode
+`adaptive-v1:1:<learner-state>:<action>:<target-or-empty>` and
+`adaptive-v1:2:<learner-state>`. The store rehydrates Turn 1 text from immutable
+approved content and Turn 2 text from generic deterministic terminal copy. No
+schema migration or derived-state column is needed. Reloaded adaptive REVEAL_READY
+sessions remain on Play to show feedback and await an explicit Reveal action;
+legacy terminal routing is unchanged. Nonadaptive policy and Final Synthesis
+research paths remain intact. Readiness and pause/resume belong to M4-C; v6 remains
+unscheduled/live-disabled and there is no AI-free fallback.
