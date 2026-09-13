@@ -22,7 +22,7 @@ for (const withEvidence of [true, false]) {
     await page.goto("/play/adaptive-fixture");
     expect(await page.locator("main").innerText()).not.toMatch(/Conway|1968|당신이 짚은 부분|원래 통찰$/);
     await page.getByRole("button", { name: "원래 통찰 공개하기" }).click();
-    await expect(page).toHaveURL(/\/result\/adaptive-fixture$/, { timeout: 10000 });
+    await expect(page.locator("main")).toHaveAttribute("data-reveal-phase", "COMPLETE");
     const section = page.getByRole("region", { name: "당신의 생각과 원래 통찰" });
     await expect(section).toBeVisible();
     await expect(section.getByRole("heading", { name: withEvidence ? "독립 재발견" : "Reveal에서 연결", exact: true })).toBeVisible();

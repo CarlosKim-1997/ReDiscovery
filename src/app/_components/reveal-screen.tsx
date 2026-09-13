@@ -4,63 +4,39 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "./session-client";
 import type { RevealView } from "./session-types";
-import { PersonalizedRevealSection } from "./personalized-reveal-section";
-
-export const REVEAL_TIMING_MS = Object.freeze({ normal: [0, 450, 650, 650, 650, 600], reduced: [0, 40, 40, 40, 40, 40] });
+import { RevealChoreographyView } from "./reveal-choreography-view";
 
 export function RevealScreen({ sessionId }: { readonly sessionId: string }) {
   const router = useRouter();
-  const [reveal, setReveal] = useState<RevealView | null>(null);
-  const [step, setStep] = useState(0);
+  const [authorized, setAuthorized] = useState<{ sessionId: string; reveal: RevealView; reducedMotion: boolean; completionPersisted: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     let cancelled = false;
-    async function run() {
+    async function load() {
       try {
         const payload = await loadSession(sessionId);
+        if (cancelled) return;
         if (payload.session.status === "REVEALED") return router.replace(`/result/${sessionId}`);
         if (payload.session.status !== "LOCKED" && payload.session.status !== "REVEAL_READY") return router.replace(`/play/${sessionId}`);
         const response = await fetch(`/api/play-sessions/${sessionId}/reveal`, { cache: "no-store" });
         if (!response.ok) throw new Error("REVEAL_NOT_ALLOWED");
         const data = await response.json() as { reveal: RevealView };
         if (cancelled) return;
-        setReveal(data.reveal);
-        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const timing = reduced ? REVEAL_TIMING_MS.reduced : REVEAL_TIMING_MS.normal;
-        for (let index = 1; index <= 5; index += 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, timing[index]));
-          if (cancelled) return;
-          setStep(index);
-        }
-        const complete = await fetch(`/api/play-sessions/${sessionId}/reveal`, { method: "POST" });
+        // Existing completion is independent of animation/skip. No skip-triggered I/O.
+        const completion = fetch(`/api/play-sessions/${sessionId}/reveal`, { method: "POST" });
+        setAuthorized({ sessionId, reveal: data.reveal, reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches, completionPersisted: false });
+        const complete = await completion;
         if (!complete.ok) throw new Error("REVEAL_COMPLETE_FAILED");
         await complete.json();
-        router.replace(`/result/${sessionId}`);
+        if (!cancelled) setAuthorized(current => current?.sessionId === sessionId ? { ...current, completionPersisted: true } : current);
       } catch {
         if (!cancelled) setError("공개 화면을 불러오지 못했습니다.");
       }
     }
-    void run();
+    void load();
     return () => { cancelled = true; };
   }, [router, sessionId]);
-
   if (error) return <main className="page-shell"><p role="alert">{error}</p></main>;
-  if (!reveal) return <main className="page-shell reveal-shell"><p className="status-copy">생각을 펼치는 중…</p></main>;
-
-  return (
-    <main className="page-shell reveal-shell" aria-live="polite" data-reveal-step={step}>
-      {reveal.representativeThought ? <section className={`reveal-beat ${step >= 0 ? "shown" : ""}`}>
-        <p className="eyebrow">당신의 생각</p><blockquote>{reveal.representativeThought}</blockquote>
-      </section> : <section className={`reveal-beat ${step >= 0 ? "shown" : ""}`}><p className="eyebrow">오늘의 탐색</p><p>여기까지 살펴본 생각을 바탕으로 연결을 공개합니다.</p></section>}
-      <div className={`rewind-line ${step >= 1 ? "shown" : ""}`}>시간을 거슬러 올라갑니다</div>
-      <section className={`reveal-beat history-beat ${step >= 2 ? "shown" : ""}`}>
-        <p className="reveal-year">{reveal.year}</p>
-        <p className={step >= 3 ? "shown" : "hidden-beat"}>{reveal.person}</p>
-        <h1 className={step >= 4 ? "shown" : "hidden-beat"}>{reveal.theory}</h1>
-      </section>
-      <p className={`transition-copy ${step >= 5 ? "shown" : ""}`}>두 생각이 만나는 지점을 살펴봅니다.</p>
-      {step >= 5 ? <PersonalizedRevealSection reveal={reveal} /> : null}
-    </main>
-  );
+  if (!authorized || authorized.sessionId !== sessionId) return <main className="page-shell reveal-shell"><p className="status-copy">생각을 펼치는 중…</p></main>;
+  return <RevealChoreographyView key={sessionId} reveal={authorized.reveal} reducedMotion={authorized.reducedMotion} onHome={() => router.push("/")} onLegacyComplete={() => { if (authorized.completionPersisted) router.replace(`/result/${sessionId}`); }} />;
 }

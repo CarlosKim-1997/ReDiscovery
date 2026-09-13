@@ -61,10 +61,11 @@ gameplay, provider readiness and same-answer pause/resume. M4-D verified the rea
 retries. Conway v6 remains UNSCHEDULED; Daily publication/alpha activation is
 deferred. Local DB migration/persistence verification remains mandatory before M9.
 Semantic AI is essential; no AI-free degraded mode is permitted.
-M5 Reveal / Personalization is OPEN; M5-A deterministic Reveal outcome foundation
-is complete. M5-B evidence-grounded Personalized Reveal Connection is complete;
-M5-C Three-Second Reveal Choreography is next and NOT STARTED.
+M5 Reveal / Personalization is CLOSED; M5-A deterministic outcome, M5-B
+evidence-grounded personalized connection and M5-C default 3000 ms Reveal
+choreography are complete. Skip and reduced-motion bypass are supported.
+M6 Identity is next and NOT STARTED.
 M6–M10 remain NOT STARTED; v6 remains unscheduled. M5-A adds no score, animation,
 provider call or persistence schema. M5-B adds approved Reveal-only v7 mapping and
-minimal reflective comparison rendering, not choreography or generated prose;
+minimal reflective comparison rendering without generated prose;
 v7 also remains unscheduled.

@@ -283,3 +283,13 @@ publishes only labels/excerpts/approved explanations plus canonical insight.
 A shared Reveal/Result section consumes that view; legacy content and existing
 Reveal timing remain unchanged. No DB migration, provider call, generated prose,
 score, v7 schedule publication or M5-C choreography is added.
+
+M5-C keeps choreography entirely in the client with central phase offsets
+0/750/1450/2200/3000 ms. Authorized Reveal payloads are session-bound; only the
+current thought/time/person/theory phase renders, then stable shared Reveal/Result
+content appears immediately. Skip cancels timers with no fetch/navigation/state
+mutation; reduced motion bypasses timers. Existing completion POST is independent
+of animation and runs in authorized load, allowing REVEALED reloads to route to
+stable Result without replay. Legacy normal-completion Result navigation remains
+compatible. No server/domain semantic, content, persistence or provider change
+is required. M5 is closed; M6 remains not started.

@@ -98,6 +98,12 @@ blockquote { margin: 1.2rem 0; padding-left: 1rem; border-left: 2px solid var(--
 .status-copy { margin-top: 40vh; text-align: center; color: var(--muted); }
 
 .reveal-shell { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.choreography-focal { min-height: 15rem; display: flex; flex-direction: column; justify-content: center; animation: reveal-fade .15s ease-out; }
+.choreography-focal h1 { font-size: clamp(2rem, 8vw, 3.8rem); font-weight: 500; margin: 0; }
+.choreography-focal blockquote { white-space: pre-wrap; overflow-wrap: anywhere; }
+.choreography-skip { align-self: flex-start; margin-top: 1rem; }
+@keyframes reveal-fade { from { opacity: .4; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .choreography-focal { animation: none; } }
 .reveal-beat, .rewind-line, .transition-copy, .hidden-beat { opacity: 0; transform: translateY(.6rem); transition: opacity .3s ease, transform .3s ease; }
 .reveal-beat.shown, .rewind-line.shown, .transition-copy.shown, .shown { opacity: 1; transform: none; }
 .reveal-shell blockquote { max-width: 34rem; font-size: clamp(1.25rem, 5vw, 1.8rem); }
