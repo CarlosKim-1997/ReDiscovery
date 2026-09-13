@@ -82,13 +82,25 @@ export class OpenAIResponsesJudgeTransport implements OpenAIJudgeTransport {
   }
 }
 
+export interface OpenAIJudgeAdapterOptions {
+  /** Preserve the default retry; allow a single-attempt operational smoke. */
+  readonly maxAttempts?: 1 | 2;
+}
+
 export class OpenAIJudgeAdapter implements JudgePort {
+  readonly maxAttempts: 1 | 2;
+
   constructor(
     private readonly transport: OpenAIJudgeTransport,
     private readonly model: string,
     private readonly nowMs: () => number = () => performance.now(),
     readonly promptVersion: JudgePromptVersion = PRIMARY_JUDGE_PROMPT_VERSION,
-  ) {}
+    options: OpenAIJudgeAdapterOptions = {},
+  ) {
+    const maxAttempts = options.maxAttempts ?? 2;
+    if (maxAttempts !== 1 && maxAttempts !== 2) throw new RangeError("maxAttempts must be 1 or 2");
+    this.maxAttempts = maxAttempts;
+  }
 
   async evaluate(input: Parameters<JudgePort["evaluate"]>[0]) {
     const attempts: JudgeAttempt[] = [];
@@ -105,7 +117,7 @@ export class OpenAIJudgeAdapter implements JudgePort {
       }),
     };
 
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
       const started = this.nowMs();
       try {
         const response = await this.transport.classify(request);

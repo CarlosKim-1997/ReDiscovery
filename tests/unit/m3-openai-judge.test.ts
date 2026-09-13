@@ -30,6 +30,43 @@ class ScriptedTransport implements OpenAIJudgeTransport {
 const run=(transport:ScriptedTransport,currentAnswer=answer)=>new OpenAIJudgeAdapter(transport,"candidate-model",()=>0).evaluate({rubric,currentAnswer,priorConfirmedState:[]});
 
 describe("M3 OpenAI Judge adapter",()=>{
+  it("preserves the default two-attempt provider limit",async()=>{
+    const transport=new ScriptedTransport([new Error("first"),new Error("second"),valid]);
+    const adapter=new OpenAIJudgeAdapter(transport,"candidate-model",()=>0);
+    expect(adapter.maxAttempts).toBe(2);
+    const error=await adapter.evaluate({rubric,currentAnswer:answer,priorConfirmedState:[]}).catch(e=>e);
+    expect(error).toBeInstanceOf(JudgeExecutionError);
+    expect(error.attempts.map((a:{attempt:number})=>a.attempt)).toEqual([1,2]);
+    expect(transport.requests).toHaveLength(2);
+  });
+  it.each([
+    ["provider",new Error("private provider failure"),"PROVIDER_ERROR",undefined],
+    ["schema",{bad:true},"SCHEMA_ERROR","STRUCTURED_OUTPUT_INVALID"],
+  ] as const)("single-attempt configuration stops after the first %s failure",async(_name,failure,status,category)=>{
+    const transport=new ScriptedTransport([failure,valid]);
+    const adapter=new OpenAIJudgeAdapter(transport,"candidate-model",()=>0,PRIMARY_JUDGE_PROMPT_VERSION,{maxAttempts:1});
+    expect(adapter.maxAttempts).toBe(1);
+    const error=await adapter.evaluate({rubric,currentAnswer:answer,priorConfirmedState:[]}).catch(e=>e);
+    expect(error).toBeInstanceOf(JudgeExecutionError);
+    expect(error.attempts).toHaveLength(1);
+    expect(error.attempts[0]).toMatchObject({attempt:1,resultStatus:status});
+    expect(error.attempts[0].failureCategory).toBe(category);
+    expect(transport.requests).toHaveLength(1);
+  });
+  it.each([1,2] as const)("maxAttempts %s returns immediately on success",async(maxAttempts)=>{
+    const transport=new ScriptedTransport([valid,valid]);
+    const adapter=new OpenAIJudgeAdapter(transport,"candidate-model",()=>0,PRIMARY_JUDGE_PROMPT_VERSION,{maxAttempts});
+    const execution=await adapter.evaluate({rubric,currentAnswer:answer,priorConfirmedState:[]});
+    expect(execution.attempts).toHaveLength(1);
+    expect(execution.attempts[0]).toMatchObject({attempt:1,resultStatus:"SUCCEEDED",promptVersion:"judge-v3"});
+    expect(transport.requests).toHaveLength(1);
+    expect(buildOpenAIJudgeClientOptions("synthetic-secret")).toMatchObject({maxRetries:0});
+  });
+  it.each([0,-1,1.5,3,Infinity,NaN])("rejects an invalid attempt bound %s before provider execution",maxAttempts=>{
+    const transport=new ScriptedTransport([valid]);
+    expect(()=>new OpenAIJudgeAdapter(transport,"candidate-model",()=>0,PRIMARY_JUDGE_PROMPT_VERSION,{maxAttempts:maxAttempts as 1 | 2})).toThrow(RangeError);
+    expect(transport.requests).toHaveLength(0);
+  });
   it("forces SDK logging off even when OPENAI_LOG requests debug output",()=>{const previous=process.env.OPENAI_LOG;process.env.OPENAI_LOG="debug";try{expect(buildOpenAIJudgeClientOptions("secret")).toMatchObject({apiKey:"secret",maxRetries:0,logLevel:"off"});const transport=new OpenAIResponsesJudgeTransport("secret");expect((transport as unknown as {client:{logLevel:string}}).client.logLevel).toBe("off");}finally{if(previous===undefined)delete process.env.OPENAI_LOG;else process.env.OPENAI_LOG=previous;}});
   it("uses the configured model, Structured Outputs, and explicitly disables Responses API storage",()=>{const request=buildOpenAIResponseRequest({model:"configured-primary-model",promptVersion:PRIMARY_JUDGE_PROMPT_VERSION,systemPrompt:"classifier",input:"synthetic fixture",expectedNodeIds:ids});expect(request.model).toBe("configured-primary-model");expect(request.text.format).toBeDefined();expect(Object.hasOwn(request,"store")).toBe(true);expect(request.store).toBe(false);expect(request.tools).toEqual([]);expect(request.tool_choice).toBe("none");});
   it("keeps historical prompts addressable and defaults production to frozen v3",async()=>{
