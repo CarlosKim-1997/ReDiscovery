@@ -1,11 +1,12 @@
-# G1 — M4 Adaptive Guidance Runtime complete; M5 next
+# G1 — M5 Reveal / Personalization (open)
 
 G1 Master Codex Handoff Packet v1과 후속 제품 방향 결정인
 [ADR 0017](docs/decisions/0017-product-runtime-v1-adaptive-guidance.md)이 현재
 authority chain이다. M3 Judge / Semantic Sensor는 제품 적합성 기준으로 닫혔고,
 M4 Adaptive Guidance Runtime은 CLOSED이다. M4-A/B/C와 M4-D의 bounded live readiness 및
-실제 두 턴 Luna runtime smoke가 완료되었다. 다음 milestone은 M5 Reveal / Personalization이며
-아직 시작하지 않았다. Daily schedule publication/alpha activation은 후속 milestone으로 미룬다.
+실제 두 턴 Luna runtime smoke가 완료되었다. M5 Reveal / Personalization은 OPEN이며
+M5-A deterministic outcome foundation을 구현했다. 다음 gate는 M5-B Personalized Reveal Connection이다.
+Daily schedule publication/alpha activation은 후속 milestone으로 미룬다.
 Conway v6는 여전히 unscheduled이며
 semantic AI 없이 진행하는 degraded mode는 허용하지 않는다.
 `G1`은 임시 프로젝트 식별자이며 최종 서비스 이름이나 브랜딩 결정이 아니다.
@@ -133,7 +134,8 @@ Judge 및 `eval:judge`만 명시적 서버 키를 사용한다.
 - [M0 verification](docs/milestones/M0.md): 변경 파일, 검증 결과, 남은 문제
 - [M1 walking skeleton](docs/milestones/M1.md): 상태 흐름, FakeJudge, resume, Reveal, 검증
 - [M3 Judge / Semantic Sensor](docs/milestones/M3.md): CLOSED product foundation and preserved verifier research
-- [M4 Adaptive Guidance Runtime](docs/milestones/M4.md): CLOSED; M4-A/B/C/D complete; M5 next, not started
+- [M4 Adaptive Guidance Runtime](docs/milestones/M4.md): CLOSED; M4-A/B/C/D complete
+- [M5 Reveal / Personalization](docs/milestones/M5.md): OPEN; M5-A complete; M5-B next, not started
 - [Runtime v1 product direction](docs/decisions/0017-product-runtime-v1-adaptive-guidance.md): adaptive guidance over perfect verification
 - [Judge v1 Luna baseline](docs/evals/judge-v1-luna-baseline.md): frozen first live-provider result
 - [Judge v2 semantic contract](docs/evals/judge-v2-semantic-contract.md): independent status/ambiguity rules

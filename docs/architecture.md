@@ -261,3 +261,13 @@ start/retry and persisted-answer resume without new reasoning input or forced
 Reveal. M4-D verified the real provider/application path internal-only; Conway v6
 remains unscheduled after M4 closure. Daily publication/alpha activation is deferred,
 and local DB migration/persistence validation is required before M9.
+
+M5-A derives adaptive Reveal outcomes in a pure domain resolver. Existing
+`adaptive-v1:1:<state>:<action>:<target>` guidance metadata preserves the first
+semantic decision even after final merge; its validated state distinguishes
+independent rediscovery from guided arrival without new persistence. Required-node
+progress (one DISCOVERED or two distinct PARTIAL nodes) recognizes partial capture
+even alongside misconception. The application adds only code/label/explanation to
+the authorized Reveal result, never Play/start/getOwned. Legacy Reveal and the
+historical verifier discoveryOutcome are unchanged. There is no numerical score,
+provider call, generated comparison, animation or schedule publication in M5-A.

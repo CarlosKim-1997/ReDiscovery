@@ -7,6 +7,7 @@ import { resolveEvidence } from "@/domain/play/session";
 import type { PlaySession } from "@/domain/play/session";
 import type { ServerPolicy } from "@/domain/content/schema";
 import { deriveRevealOutcome } from "@/domain/play/final-synthesis";
+import { resolveAdaptiveRevealOutcome } from "@/domain/reveal/outcome";
 import { toPublicSessionView } from "./session-view";
 import { JudgeVerdictValidationError, validateJudgeVerdict } from "./judge-verdict";
 import { JudgeExecutionError, type JudgeAttempt } from "@/ports/judge";
@@ -63,10 +64,11 @@ export async function reveal(deps:DailyGameDeps,deviceId:string,id:string){
   const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;
   if(s.status!=="LOCKED"&&s.status!=="REVEAL_READY"&&s.status!=="REVEALED")throw new Error("REVEAL_NOT_ALLOWED");
   const c=await requiredContent(deps,s.contentVersionId);const discoveryOutcome=deriveRevealOutcome(s);
+  const revealOutcome=resolveAdaptiveRevealOutcome(s,c.serverPolicy);
   let representativeThought:string|undefined;
   if(discoveryOutcome==="VERIFIED_LEGACY"&&s.lockEvidence)representativeThought=resolveEvidence(s,s.lockEvidence);
   if(discoveryOutcome==="VERIFIED_FINAL_SYNTHESIS"&&s.verifiedSynthesisAttemptId){const attempts=await deps.store.getFinalSynthesisAttempts(s.id,deviceId);representativeThought=attempts?.find(attempt=>attempt.id===s.verifiedSynthesisAttemptId)?.text??undefined;}
-  return{...c.revealContent,discoveryOutcome,...(representativeThought?{representativeThought}:{}),substantialGuidanceUsed:s.guidance.some(g=>g.stage==="RESCUE"||g.stage==="CORRECTION"),connection:representativeThought?`당신은 “${representativeThought}”라고 보았습니다. ${c.revealContent.connection}`:c.revealContent.connection};
+  return{...c.revealContent,discoveryOutcome,...(revealOutcome?{revealOutcome}:{}),...(representativeThought?{representativeThought}:{}),substantialGuidanceUsed:s.guidance.some(g=>g.stage==="RESCUE"||g.stage==="CORRECTION"),connection:representativeThought?`당신은 “${representativeThought}”라고 보았습니다. ${c.revealContent.connection}`:c.revealContent.connection};
 }
 export async function finishReveal(deps:DailyGameDeps,deviceId:string,id:string){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const completed=completeReveal(s);const next={...completed,stateVersion:s.status==="REVEALED"?s.stateVersion:s.stateVersion+1};if(s.status!=="REVEALED"&&!await deps.store.completeReveal(s.stateVersion,next))throw new Error("STALE_STATE_VERSION");const attempts="final_synthesis" in c.serverPolicy?await deps.store.getFinalSynthesisAttempts(s.id,deviceId):[];return toPublicSessionView(next,c.serverPolicy,attempts??[],deps.clock.now());}
 async function transition(deps:DailyGameDeps,deviceId:string,id:string,fn:(s:PlaySession,p:ServerPolicy)=>PlaySession){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const changed=fn(s,c.serverPolicy);const next={...changed,stateVersion:s.stateVersion+1};if(!await deps.store.saveTransition(s.stateVersion,next))throw new Error("STALE_STATE_VERSION");const attempts="final_synthesis" in c.serverPolicy?await deps.store.getFinalSynthesisAttempts(s.id,deviceId):[];return toPublicSessionView(next,c.serverPolicy,attempts??[],deps.clock.now());}
