@@ -3,8 +3,10 @@ import { expect,test } from "@playwright/test";
 test("anonymous identity is HttpOnly and owns exactly one current Official session",async({browser})=>{
   const a=await browser.newContext();const pageA=await a.newPage();
   const dailyResponse=await pageA.request.get("/api/daily");expect(dailyResponse.ok()).toBe(true);
+  expect((await a.cookies()).find(c=>c.name==="g1_device")).toBeUndefined();
+  const first=await (await pageA.request.post("/api/play-sessions")).json();
   const cookie=(await a.cookies()).find(c=>c.name==="g1_device");expect(cookie).toMatchObject({httpOnly:true,sameSite:"Lax",path:"/"});
-  const first=await (await pageA.request.post("/api/play-sessions")).json();const second=await (await pageA.request.post("/api/play-sessions")).json();expect(second.session.id).toBe(first.session.id);
+  const second=await (await pageA.request.post("/api/play-sessions")).json();expect(second.session.id).toBe(first.session.id);
   const b=await browser.newContext();const pageB=await b.newPage();const other=await (await pageB.request.post("/api/play-sessions")).json();expect(other.session.id).not.toBe(first.session.id);
   expect((await pageB.request.get(`/api/play-sessions/${first.session.id}`)).status()).toBe(404);
   expect((await pageB.request.post(`/api/play-sessions/${first.session.id}/lock`)).status()).toBe(404);
