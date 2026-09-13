@@ -62,6 +62,8 @@ export interface PlaySession {
   readonly dailyId: string;
   readonly contentVersionId: string;
   readonly anonymousDeviceId: string;
+  readonly accountId?: string;
+  readonly accountClaimedAt?: Date;
   readonly attemptType: AttemptType;
   readonly status: PlayStatus;
   readonly stage: PlayStage;

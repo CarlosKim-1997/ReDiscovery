@@ -64,8 +64,11 @@ Semantic AI is essential; no AI-free degraded mode is permitted.
 M5 Reveal / Personalization is CLOSED; M5-A deterministic outcome, M5-B
 evidence-grounded personalized connection and M5-C default 3000 ms Reveal
 choreography are complete. Skip and reduced-motion bypass are supported.
-M6 Identity is next and NOT STARTED.
-M6–M10 remain NOT STARTED; v6 remains unscheduled. M5-A adds no score, animation,
+M6 Identity is OPEN; M6-A provider-neutral Account and explicit single official
+session claim foundation is complete. Only the explicitly current device-owned
+official session may be claimed; historical anonymous auto-merge is forbidden.
+M6-B Trusted Authentication Integration + Login UX is next and NOT STARTED.
+M7–M10 remain NOT STARTED; v6 remains unscheduled. M5-A adds no score, animation,
 provider call or persistence schema. M5-B adds approved Reveal-only v7 mapping and
 minimal reflective comparison rendering without generated prose;
 v7 also remains unscheduled.

@@ -293,3 +293,14 @@ of animation and runs in authorized load, allowing REVEALED reloads to route to
 stable Result without replay. Legacy normal-completion Result navigation remains
 compatible. No server/domain semantic, content, persistence or provider change
 is required. M5 is closed; M6 remains not started.
+
+M6-A opens Identity with a provider-neutral Account and separate narrow
+AccountStorePort capability on the primary PostgreSQL adapter. Service-only
+application boundaries resolve trusted external subjects and claim one explicit
+official session/device. Exact-session row locking makes claims atomic; same-owner
+replays preserve timestamps and competing owners cannot transfer ownership.
+Anonymous provenance and existing authorization remain intact. Claim leaves
+gameplay state_version unchanged so in-flight Judge reservations remain valid;
+normal transitions leave account columns untouched. No historical history query/merge, public
+client-asserted auth route or auth SDK exists. M6 remains open; trusted authentication
+integration and login UX belong to M6-B.

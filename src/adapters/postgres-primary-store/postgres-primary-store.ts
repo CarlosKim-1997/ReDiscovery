@@ -3,15 +3,50 @@ import { storedGuidanceText } from "@/domain/play/adaptive-runtime";
 import type { ContentVersion, JudgeRubric, PublicPlay, RevealContent, ServerPolicy } from "@/domain/content/schema";
 import type { FinalSynthesisAttempt, PlaySession } from "@/domain/play/session";
 import type { AiRunRecord, DailyRecord, PrimaryStorePort } from "@/ports/primary-store";
+import { externalSubjectSchema, sessionClaimDecision, type Account, type SessionAccountOwnership, type SessionClaimResult } from "@/domain/identity/account";
+import type { AccountStorePort } from "@/ports/account-store";
 
 type Row = Record<string, unknown>;
 const dateText = (value: unknown) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 function synthesisAttempt(row:Row):FinalSynthesisAttempt{return{id:String(row.id),sessionId:String(row.session_id),attemptNumber:Number(row.attempt_number) as 1|2,submissionKeyHash:String(row.submission_key_hash),submissionTextHash:String(row.submission_text_hash),...(row.text!==null?{text:String(row.text)}:{}),charCount:Number(row.char_count),submittedAt:new Date(String(row.submitted_at)),evaluationState:row.evaluation_state as FinalSynthesisAttempt["evaluationState"],evaluationGeneration:Number(row.evaluation_generation),...(row.evaluation_started_at?{evaluationStartedAt:new Date(String(row.evaluation_started_at))}:{}),...(row.evaluation_lease_expires_at?{evaluationLeaseExpiresAt:new Date(String(row.evaluation_lease_expires_at))}:{}),...(row.evaluated_at?{evaluatedAt:new Date(String(row.evaluated_at))}:{}),...(row.last_error_at?{lastErrorAt:new Date(String(row.last_error_at))}:{}),proofContractVersion:"final-synthesis-proof-v1",...(row.redacted_result!==null?{redactedResult:row.redacted_result}:{}),...(row.failure_category!==null?{failureCategory:String(row.failure_category)}:{}),...(row.purged_at?{purgedAt:new Date(String(row.purged_at))}:{}),updatedAt:new Date(String(row.updated_at))};}
 
-export class PostgresPrimaryStore implements PrimaryStorePort {
+function account(row: Row): Account { return { id: String(row.id), externalSubject: String(row.external_subject), createdAt: new Date(String(row.created_at)), updatedAt: new Date(String(row.updated_at)) }; }
+function ownership(row: Row): SessionAccountOwnership { return { sessionId: String(row.id), anonymousDeviceId: String(row.anonymous_device_id), attemptType: String(row.attempt_type), ...(row.account_id ? { accountId: String(row.account_id), accountClaimedAt: new Date(String(row.account_claimed_at)) } : {}) }; }
+
+export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort {
   private readonly sql: Sql;
   constructor(databaseUrl: string) { this.sql = postgres(databaseUrl, { max: 10 }); }
   async close() { await this.sql.end(); }
+  async findAccountByExternalSubject(externalSubject: string) {
+    const subject = externalSubjectSchema.parse(externalSubject);
+    const [row] = await this.sql<Row[]>`SELECT * FROM accounts WHERE external_subject=${subject}`;
+    return row ? account(row) : undefined;
+  }
+  async resolveAccount(externalSubject: string, at: Date) {
+    const subject = externalSubjectSchema.parse(externalSubject);
+    return this.sql.begin(async tx => {
+      const [created] = await tx<Row[]>`INSERT INTO accounts(external_subject,created_at,updated_at) VALUES(${subject},${at},${at}) ON CONFLICT(external_subject) DO NOTHING RETURNING *`;
+      const row = created ?? (await tx<Row[]>`SELECT * FROM accounts WHERE external_subject=${subject}`)[0];
+      if (!row) throw new Error("ACCOUNT_RESOLUTION_FAILED");
+      return account(row);
+    });
+  }
+  async claimOfficialSession(input: Parameters<AccountStorePort["claimOfficialSession"]>[0]): Promise<SessionClaimResult> {
+    return this.sql.begin(async tx => {
+      const [existingAccount] = await tx<Row[]>`SELECT id FROM accounts WHERE id=${input.accountId} FOR KEY SHARE`;
+      if (!existingAccount) return { kind: "ACCOUNT_NOT_FOUND" };
+      // Only this explicit ID is read/locked; never enumerate device history.
+      const [row] = await tx<Row[]>`SELECT * FROM play_sessions WHERE id=${input.sessionId} FOR UPDATE`;
+      const state = row ? ownership(row) : undefined;
+      const kind = sessionClaimDecision(state, input.accountId, input.deviceId);
+      if (kind === "ALREADY_CLAIMED_BY_ACCOUNT") return { kind, ownership: state! };
+      if (kind !== "CLAIMED") return { kind };
+      // Ownership is orthogonal to gameplay CAS. Do not invalidate an in-flight
+      // Judge reservation; existing transitions never write the account columns.
+      const [claimed] = await tx<Row[]>`UPDATE play_sessions SET account_id=${input.accountId},account_claimed_at=${input.claimedAt},updated_at=${input.claimedAt} WHERE id=${input.sessionId} RETURNING *`;
+      return { kind: "CLAIMED", ownership: ownership(claimed!) };
+    });
+  }
   async resolveDaily(at: Date): Promise<DailyRecord | undefined> {
     const [row] = await this.sql<Row[]>`SELECT d.*,v.public_play FROM daily_schedule d JOIN content_versions v ON v.id=d.content_version_id WHERE d.canonical_date=(${at} AT TIME ZONE 'Asia/Seoul')::date AND d.release_at<=${at} LIMIT 1`;
     return row ? { id:String(row.id),canonicalDate:dateText(row.canonical_date),sequenceNumber:Number(row.sequence_number),releaseAt:new Date(String(row.release_at)),contentVersionId:String(row.content_version_id),publicPlay:row.public_play as PublicPlay } : undefined;
@@ -114,6 +149,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
     const events=await sql<Row[]>`SELECT stage,guidance_key FROM guidance_events WHERE session_id=${id} ORDER BY created_at,id`;
     const content=await this.getContentVersion(String(s.content_version_id));if(!content)throw new Error("CONTENT_VERSION_NOT_FOUND");
     return {id,dailyId:String(s.daily_id),contentVersionId:String(s.content_version_id),anonymousDeviceId:deviceId,attemptType:s.attempt_type as PlaySession["attemptType"],status:s.status as PlaySession["status"],stage:s.stage as PlaySession["stage"],turnCount:Number(s.turn_count),stateVersion:Number(s.state_version),
+      ...(s.account_id ? {accountId:String(s.account_id),accountClaimedAt:new Date(String(s.account_claimed_at))}:{}),
       thoughts:answers.map(a=>({id:String(a.id),turn:Number(a.turn),stage:a.stage as PlaySession["stage"],text:String(a.text)})),
       discoveries:nodes.map(n=>({nodeId:String(n.node_id),status:n.status as PlaySession["discoveries"][number]["status"],...(n.first_stage?{firstStage:n.first_stage as PlaySession["stage"]}:{}),...(n.first_answer_id?{evidence:{answerId:String(n.first_answer_id),spanStart:Number(n.evidence_span_start),spanEnd:Number(n.evidence_span_end)}}:{}),...(n.contradiction_answer_id?{contradictionEvidence:{answerId:String(n.contradiction_answer_id),spanStart:Number(n.contradiction_span_start),spanEnd:Number(n.contradiction_span_end)}}:{})})),
       guidance:events.map(e=>{const key=String(e.guidance_key);return{stage:e.stage as Exclude<PlaySession["stage"],"BLIND">,key,text:storedGuidanceText(key,content.serverPolicy)};}),
