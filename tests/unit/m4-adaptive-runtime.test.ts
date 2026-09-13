@@ -38,6 +38,7 @@ function fixture(turns: readonly (readonly NodeStatus[])[]) {
     getDaily: async () => undefined,
     reserveAnswerEvaluation: async (version: number, _thought: unknown, next: PlaySession) => { if (session.stateVersion !== version) return false; session = next; return true; },
     completeAnswerEvaluation: async (version: number, next: PlaySession) => { if (session.stateVersion !== version) return false; session = next; return true; },
+    saveTransition: async (version: number, next: PlaySession) => { if (session.stateVersion !== version) return false; session = next; return true; },
     abortAnswerEvaluation: async (_version: number, prior: PlaySession) => { session = prior; return true; },
     recordAiRuns: async () => {},
     completeReveal: async (_version: number, next: PlaySession) => { session = next; return true; },
@@ -98,13 +99,13 @@ describe("M4-B actual answer orchestration", () => {
     expect((await f.submit())!.session.adaptive!.learnerState).toBe("MISCONCEPTION");
   });
 
-  it("provider failure uses existing recovery without consuming Turn 2 or forcing Reveal", async () => {
+  it("provider failure now preserves the interrupted Turn 2 for operational recovery", async () => {
     const f = fixture([[]]);
     await f.submit();
     f.evaluate.mockRejectedValueOnce(new Error("fake provider unavailable"));
-    await expect(f.submit()).rejects.toThrow("JUDGE_UNAVAILABLE");
-    expect(f.stored()).toMatchObject({ status: "THINKING", turnCount: 1 });
-    expect(f.stored().thoughts).toHaveLength(1);
+    await expect(f.submit()).rejects.toThrow("SEMANTIC_FEEDBACK_PAUSED");
+    expect(f.stored()).toMatchObject({ status: "ERROR_RECOVERABLE", turnCount: 2 });
+    expect(f.stored().thoughts).toHaveLength(2);
     expect(f.stored().guidance).toHaveLength(1);
   });
 

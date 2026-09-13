@@ -2,6 +2,8 @@ import { resolveEvidence, type FinalSynthesisAttempt, type PlaySession } from "@
 import { canApplyCorrectiveRescue, selectRepresentativeEvidence } from "@/domain/play/policy";
 import type { ServerPolicy } from "@/domain/content/schema";
 import { adaptiveFeedback } from "@/domain/play/adaptive-runtime";
+import { resolveLearnerState } from "@/domain/play/adaptive-guidance";
+import type { GuidanceAction, LearnerState } from "@/domain/play/vocabulary";
 
 export interface PublicSessionView {
   readonly id: string;
@@ -15,7 +17,7 @@ export interface PublicSessionView {
   readonly representativeThought?: string;
   readonly revealCompleted: boolean;
   readonly stateVersion: number;
-  readonly adaptive?: ReturnType<typeof adaptiveFeedback> & Readonly<{ canAnswer: boolean; canReveal: boolean }>;
+  readonly adaptive?: Readonly<{ learnerState: LearnerState; guidanceAction?: GuidanceAction; targetNode?: string; text?: string; canAnswer: boolean; canReveal: boolean; canResume: boolean; paused: boolean }>;
   readonly synthesis?: Readonly<{
     enabled: true;
     attemptsUsed: number;
@@ -54,9 +56,12 @@ export function toPublicSessionView(
     revealCompleted: session.revealCompleted,
     stateVersion: session.stateVersion,
     ...("adaptive_guidance" in policy ? { adaptive: {
-      ...adaptiveFeedback(session, policy),
+      learnerState: resolveLearnerState(session.discoveries, policy),
+      ...(session.turnCount > 0 && session.status !== "EVALUATING" && session.status !== "ERROR_RECOVERABLE" ? adaptiveFeedback(session, policy) : {}),
       canAnswer: session.status === "THINKING" && session.turnCount < 2,
       canReveal: session.status === "REVEAL_READY",
+      canResume: session.status === "ERROR_RECOVERABLE",
+      paused: session.status === "ERROR_RECOVERABLE",
     } } : {}),
     ...(synthesis ? { synthesis } : {}),
   };

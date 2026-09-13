@@ -24,6 +24,7 @@ export interface PrimaryStorePort {
   createDevice(tokenHash:string):Promise<{id:string}>;
   touchDevice(id:string):Promise<void>;
   startOfficialSession(deviceId:string,daily:DailyRecord,nodeIds:readonly string[]):Promise<PlaySession>;
+  getOfficialSession(deviceId:string,dailyId:string):Promise<PlaySession|undefined>;
   getOwnedSession(id:string,deviceId:string):Promise<PlaySession|undefined>;
   getFinalSynthesisAttempts(sessionId:string,deviceId:string):Promise<readonly FinalSynthesisAttempt[]|undefined>;
   reserveAnswerEvaluation(expectedVersion:number,answer:SubmittedThought,evaluating:PlaySession):Promise<boolean>;

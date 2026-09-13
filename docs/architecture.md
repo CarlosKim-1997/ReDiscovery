@@ -224,3 +224,38 @@ sessions remain on Play to show feedback and await an explicit Reveal action;
 legacy terminal routing is unchanged. Nonadaptive policy and Final Synthesis
 research paths remain intact. Readiness and pause/resume belong to M4-C; v6 remains
 unscheduled/live-disabled and there is no AI-free fallback.
+
+M4-C introduces `SemanticAiReadinessPort` and a replaceable non-generation probe.
+The OpenAI adapter retrieves the configured primary Judge model with SDK retries
+disabled and a 10-second request timeout. It returns only READY/UNAVAILABLE,
+without logging credentials or provider bodies. This is connectivity/auth/model
+metadata access evidence, not a guarantee of inference quota, Structured Outputs
+compatibility, or semantic quality. No live probe is executed in implementation.
+
+An application monitor uses injected ClockPort, caches READY for 60 seconds and
+UNAVAILABLE for 12 seconds, and coalesces stale checks into one in-flight probe.
+Validated Judge success refreshes READY; a final PROVIDER_ERROR attempt invalidates
+it. Schema-only errors do not poison global readiness. Newer Judge evidence fences
+older probe results. One monitor is composed per configured provider/model/process;
+Internal Alpha accepts this process-local cache. Distributed coordination is
+deferred unless deployment requires it. Fake readiness is READY only in APP_ENV=test
+and cannot be refreshed into READY by fake legacy success in other environments.
+
+New adaptive Official creation requires readiness; an existing Official session
+can still be retrieved while unavailable. Adaptive evaluation failures preserve
+the reserved user answer and semantic state, persist ERROR_RECOVERABLE via CAS,
+and record existing AI-run metadata. A separate evaluation-resume command requires
+ownership, adaptive capability, paused status, the expected state version, and one
+last answer whose turn/stage matches the interruption. Readiness precedes an atomic
+CAS retry reservation; Judge receives the same answer without another INSERT or
+turn increment. CAS fences simultaneous/stale/repeated retries. Legacy answer
+rollback and Final Synthesis paths remain unchanged.
+
+The existing PostgreSQL session status CHECK did not accept ERROR_RECOVERABLE,
+despite the domain vocabulary already defining it. M4-C's minimal new migration
+adds only that accepted status; no tables, columns, answer bytes, or historical
+migrations change. Apply repository migrations before using adaptive pause in a
+database-backed environment. Public pause exposes saved thoughts and resume
+capability, never fabricated new feedback or provider details. UI has unavailable
+start/retry and persisted-answer resume without new reasoning input or forced
+Reveal. Conway v6 remains unscheduled pending separately authorized M4-D.

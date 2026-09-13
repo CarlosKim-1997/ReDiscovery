@@ -33,6 +33,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort {
     });
   }
   async getOwnedSession(id:string,deviceId:string){return this.load(this.sql,id,deviceId);}
+  async getOfficialSession(deviceId:string,dailyId:string){const [row]=await this.sql<Row[]>`SELECT id FROM play_sessions WHERE anonymous_device_id=${deviceId} AND daily_id=${dailyId} AND attempt_type='OFFICIAL'`;return row?this.load(this.sql,String(row.id),deviceId):undefined;}
   async getFinalSynthesisAttempts(sessionId:string,deviceId:string){const [owned]=await this.sql<Row[]>`SELECT id FROM play_sessions WHERE id=${sessionId} AND anonymous_device_id=${deviceId}`;if(!owned)return undefined;const rows=await this.sql<Row[]>`SELECT * FROM final_synthesis_attempts WHERE session_id=${sessionId} ORDER BY attempt_number`;return rows.map(synthesisAttempt);}
   async reserveAnswerEvaluation(expected:number,answer:PlaySession["thoughts"][number],evaluating:PlaySession){
     return this.sql.begin(async tx=>{if(!await this.lockVersion(tx,evaluating,expected))return false;await tx`INSERT INTO user_answers(id,session_id,turn,stage,text,char_count) VALUES(${answer.id},${evaluating.id},${answer.turn},${answer.stage},${answer.text},char_length(${answer.text}))`;await this.persist(tx,expected,evaluating);return true;});

@@ -12,6 +12,8 @@ import { OpenAIJudgeAdapter, OpenAIResponsesJudgeTransport } from "@/adapters/op
 import { makeClock } from "@/server/clock";
 import type { FinalSynthesisVerifierPort } from "@/ports/final-synthesis-verifier";
 import { makeFinalSynthesisVerifier } from "@/server/final-synthesis-verifier";
+import { makeSemanticAiReadiness } from "@/server/semantic-ai-readiness";
+import type { SemanticAiReadinessPort } from "@/ports/semantic-ai-readiness";
 
 function makeJudge():JudgePort {
   if(serverConfig.JUDGE_ADAPTER==="fake"){
@@ -22,8 +24,12 @@ function makeJudge():JudgePort {
 }
 
 /** The composition root is the only place that chooses concrete adapters. */
-export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; finalSynthesisVerifier:FinalSynthesisVerifierPort; store: PrimaryStorePort }> = Object.freeze({
-  clock: makeClock(serverConfig),
+const clock = makeClock(serverConfig);
+const readiness = makeSemanticAiReadiness(serverConfig, clock);
+
+export const services: Readonly<{ clock: ClockPort; identity:IdentityPort; judge: JudgePort; readiness:SemanticAiReadinessPort; finalSynthesisVerifier:FinalSynthesisVerifierPort; store: PrimaryStorePort }> = Object.freeze({
+  clock,
+  readiness,
   identity: new NodeIdentityAdapter(),
   judge: makeJudge(),
   finalSynthesisVerifier: makeFinalSynthesisVerifier(serverConfig),

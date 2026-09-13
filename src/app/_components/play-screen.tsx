@@ -38,7 +38,11 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
       body: JSON.stringify({ thought }),
     });
     if (!response.ok) {
-      const failure = await response.json().catch(() => ({})) as { error?: string };
+      const failure = await response.json().catch(() => ({})) as { error?: string; session?: PublicSessionView };
+      if (failure.session?.adaptive?.paused) {
+        setPayload(current => current ? { ...current, session: failure.session! } : current);
+        setThought(""); setEvaluating(false); return;
+      }
       setError(failure.error === "JUDGE_UNAVAILABLE"
         ? "지금은 생각을 살펴보지 못했습니다. 입력은 그대로 두었으니 다시 시도해주세요."
         : "생각을 저장하지 못했습니다. 다시 시도해주세요.");
@@ -55,6 +59,22 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
     const response = await fetch(`/api/play-sessions/${sessionId}/lock`, { method: "POST" });
     if (!response.ok) return setError("아직 생각을 잠글 수 없습니다.");
     router.push(`/reveal/${sessionId}`);
+  }
+
+  async function resumeFeedback() {
+    if (!payload?.session.adaptive?.canResume || evaluating) return;
+    setEvaluating(true); setError(null);
+    try {
+      const response = await fetch(`/api/play-sessions/${sessionId}/evaluation-resume`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedStateVersion: payload.session.stateVersion }),
+      });
+      const result = await response.json() as { session?: PublicSessionView };
+      if (result.session) setPayload(current => current ? { ...current, session: result.session! } : current);
+      else if (!response.ok) { const refreshed = await loadSession(sessionId); applyCanonicalPayload(refreshed); }
+      if (!response.ok) setError("아직 피드백을 준비하지 못했습니다. 잠시 후 다시 이어가주세요.");
+    } catch { setError("연결을 확인한 뒤 저장된 생각으로 다시 이어가주세요."); }
+    finally { setEvaluating(false); }
   }
 
   async function continueWithHelp() {
@@ -123,8 +143,11 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
   const lockable = session.status === "LOCKABLE";
   const adaptiveRevealReady = Boolean(session.adaptive?.canReveal);
   const synthesizing = session.status === "SYNTHESIZING" && Boolean(session.synthesis);
-  const displayedTurn = Math.min(session.turnCount + (lockable ? 0 : 1), session.maxTurns);
-  const turnLabel = session.correctiveRescueAvailable
+  const adaptivePending = Boolean(session.adaptive) && (session.status === "ERROR_RECOVERABLE" || session.status === "EVALUATING");
+  const displayedTurn = Math.min(session.turnCount + (lockable || adaptivePending ? 0 : 1), session.maxTurns);
+  const turnLabel = session.adaptive?.paused
+    ? `${session.turnCount}번째 생각 피드백이 일시 중지되었습니다`
+    : session.correctiveRescueAvailable
     ? `${session.turnCount}개의 생각을 제출했고 정정 도움을 확인하는 중입니다`
     : synthesizing
     ? `${session.turnCount}개의 생각 이후 마지막 정리 중입니다`
@@ -147,7 +170,7 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
         </section>
       ) : null}
 
-      {latestGuidance ? (
+      {latestGuidance && !session.adaptive?.paused ? (
         <aside className={`guidance-card guidance-${latestGuidance.stage.toLowerCase()}`} aria-label={`${latestGuidance.stage} 도움`}>
           <p className="guidance-label">{adaptiveRevealReady ? "생각 돌아보기" : latestGuidance.stage === "RESCUE" ? "생각의 연결" : "다음 관점"}</p>
           <p>{latestGuidance.text}</p>
@@ -186,6 +209,12 @@ export function PlayScreen({ sessionId }: { readonly sessionId: string }) {
           <h2 id="lock-title">여기까지 닿았습니다.</h2>
           <blockquote>{session.representativeThought}</blockquote>
           <button className="primary-button" onClick={lock}>내 생각 잠그고 공개하기</button>
+        </section>
+      ) : session.adaptive?.paused ? (
+        <section className="lock-panel" aria-label="피드백 일시 중지">
+          <p role="status">생각은 저장되었습니다. 지금은 피드백을 준비하지 못했습니다. 잠시 후 이어가주세요.</p>
+          <blockquote aria-label="저장된 생각">{session.thoughts.at(-1)?.text}</blockquote>
+          <button className="primary-button" type="button" disabled={!session.adaptive.canResume} onClick={resumeFeedback}>저장된 생각 피드백 이어가기</button>
         </section>
       ) : adaptiveRevealReady ? (
         <section className="lock-panel" aria-label="통찰 비교 준비">

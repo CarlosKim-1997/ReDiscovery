@@ -10,19 +10,32 @@ import { deriveRevealOutcome } from "@/domain/play/final-synthesis";
 import { toPublicSessionView } from "./session-view";
 import { JudgeVerdictValidationError, validateJudgeVerdict } from "./judge-verdict";
 import { JudgeExecutionError, type JudgeAttempt } from "@/ports/judge";
+import type { SemanticAiReadinessPort } from "@/ports/semantic-ai-readiness";
+import { evaluateAdaptiveAnswer, requireSemanticAiReadiness } from "./adaptive-evaluation";
 
-export interface DailyGameDeps { readonly clock:ClockPort; readonly identity:IdentityPort; readonly judge:JudgePort; readonly store:PrimaryStorePort }
+export interface DailyGameDeps { readonly clock:ClockPort; readonly identity:IdentityPort; readonly judge:JudgePort; readonly store:PrimaryStorePort; readonly readiness?:SemanticAiReadinessPort }
 export async function currentDaily(deps:DailyGameDeps){return deps.store.resolveDaily(deps.clock.now());}
 export async function resolveDevice(deps:DailyGameDeps,token?:string){
   if(token){const existing=await deps.store.findActiveDevice(deps.identity.hashToken(token));if(existing){await deps.store.touchDevice(existing.id);return{device:existing};}}
   const freshToken=deps.identity.randomToken();const device=await deps.store.createDevice(deps.identity.hashToken(freshToken));return{device,token:freshToken};
 }
-export async function startOfficial(deps:DailyGameDeps,deviceId:string){const daily=await currentDaily(deps);if(!daily)return undefined;const content=await requiredContent(deps,daily.contentVersionId);const session=await deps.store.startOfficialSession(deviceId,daily,content.judgeRubric.nodes.map(n=>n.id));return{daily:publicDaily(daily),session:toPublicSessionView(session,content.serverPolicy,[],deps.clock.now())};}
+export async function startOfficial(deps:DailyGameDeps,deviceId:string){
+  const daily=await currentDaily(deps);if(!daily)return undefined;
+  const content=await requiredContent(deps,daily.contentVersionId);
+  if("adaptive_guidance" in content.serverPolicy){
+    const existing=await deps.store.getOfficialSession(deviceId,daily.id);
+    if(existing)return{daily:publicDaily(daily),session:toPublicSessionView(existing,content.serverPolicy,[],deps.clock.now())};
+    await requireSemanticAiReadiness(deps);
+  }
+  const session=await deps.store.startOfficialSession(deviceId,daily,content.judgeRubric.nodes.map(n=>n.id));
+  return{daily:publicDaily(daily),session:toPublicSessionView(session,content.serverPolicy,[],deps.clock.now())};
+}
 export async function getOwned(deps:DailyGameDeps,deviceId:string,id:string){const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);const daily=await deps.store.getDaily(s.dailyId);const attempts="final_synthesis" in c.serverPolicy?await deps.store.getFinalSynthesisAttempts(s.id,deviceId):[];return{daily:daily?publicDaily(daily):undefined,session:toPublicSessionView(s,c.serverPolicy,attempts??[],deps.clock.now())};}
 export async function answer(deps:DailyGameDeps,deviceId:string,id:string,text:string){
   const s=await deps.store.getOwnedSession(id,deviceId);if(!s)return undefined;const c=await requiredContent(deps,s.contentVersionId);if(text.length>2000)throw new Error("ANSWER_TOO_LONG");if(s.turnCount>=c.serverPolicy.max_turns)throw new Error("INVALID_SESSION_STATE");
   const thought={id:deps.identity.randomId(),turn:s.turnCount+1,stage:s.stage,text};const evaluating={...beginEvaluation(s,thought),stateVersion:s.stateVersion+1};
   if(!await deps.store.reserveAnswerEvaluation(s.stateVersion,thought,evaluating))throw new Error("STALE_STATE_VERSION");
+  if("adaptive_guidance" in c.serverPolicy)return evaluateAdaptiveAnswer(deps,evaluating,c,thought);
   let attempts:readonly JudgeAttempt[]=[];let runsRecorded=false;
   try {
     const execution=await deps.judge.evaluate({rubric:c.judgeRubric,currentAnswer:text,priorConfirmedState:s.discoveries,...(s.guidance.at(-1)?.text?{lastGuidance:s.guidance.at(-1)!.text}:{})});
@@ -30,12 +43,14 @@ export async function answer(deps:DailyGameDeps,deviceId:string,id:string,text:s
     let verdict;
     try { verdict=validateJudgeVerdict(execution.verdict,c.judgeRubric,text); }
     catch (error) { attempts=markLastSchemaFailure(attempts,error instanceof JudgeVerdictValidationError?error.category:"STRUCTURED_OUTPUT_INVALID");throw new JudgeExecutionError(attempts); }
+    deps.readiness?.recordSuccess();
     await recordRuns(deps,s,thought.id,attempts);runsRecorded=true;
     const result=applyJudgeVerdict(evaluating,verdict,c.serverPolicy);const next={...result.session,...(result.session.status==="SYNTHESIZING"?{synthesisEnteredAt:deps.clock.now()}:{}),stateVersion:evaluating.stateVersion+1};
     if(!await deps.store.completeAnswerEvaluation(evaluating.stateVersion,next))throw new Error("STALE_STATE_VERSION");
     return{outcome:result.outcome,session:toPublicSessionView(next,c.serverPolicy,[],deps.clock.now())};
   } catch(error) {
     const failedAttempts=error instanceof JudgeExecutionError?error.attempts:attempts;
+    if(failedAttempts.at(-1)?.resultStatus==="PROVIDER_ERROR")deps.readiness?.recordProviderFailure();
     if(!runsRecorded&&failedAttempts.length>0)try{await recordRuns(deps,s,thought.id,failedAttempts);}catch{void 0;}
     await deps.store.abortAnswerEvaluation(evaluating.stateVersion,s,thought.id);
     if(error instanceof JudgeExecutionError)throw error;
