@@ -64,13 +64,15 @@ Semantic AI is essential; no AI-free degraded mode is permitted.
 M5 Reveal / Personalization is CLOSED; M5-A deterministic outcome, M5-B
 evidence-grounded personalized connection and M5-C default 3000 ms Reveal
 choreography are complete. Skip and reduced-motion bypass are supported.
-M6 Identity is OPEN; M6-A provider-neutral Account and explicit single official
+M6 Identity is CLOSED; final independent closure review PASSED per the product
+owner's canonical handoff. M6-A provider-neutral Account and explicit single official
 session claim foundation is complete. Only the explicitly current device-owned
 official session may be claimed; historical anonymous auto-merge is forbidden.
-M6-B Supabase Auth / Google-only SSR trusted claims integration is complete,
-provider-free. No live OAuth is verified. M6-C Google OAuth Configuration + Live
-Claim Smoke + M6 Closure is next and NOT STARTED.
-M7–M10 remain NOT STARTED; v6 remains unscheduled. M5-A adds no score, animation,
+M6-B Supabase Auth / Google-only SSR trusted claims integration is complete;
+M6-C live OAuth/claim smoke PASSED, M6-D identity hardening and M6-E data access
+boundary hardening are complete, and the M6-E live security gate PASSED.
+M7 Abuse / Cost is next and NOT STARTED; M8–M10 remain NOT STARTED.
+v6 remains unscheduled. M5-A adds no score, animation,
 provider call or persistence schema. M5-B adds approved Reveal-only v7 mapping and
 minimal reflective comparison rendering without generated prose;
 v7 also remains unscheduled.
