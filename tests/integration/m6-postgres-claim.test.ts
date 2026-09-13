@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres-primary-store";
 import { assertE2eFixtureSafety } from "../support/e2e-fixture-safety";
 
@@ -29,7 +29,7 @@ suite("M6 dedicated PostgreSQL claim persistence", () => {
     for (const id of accountIds) await sql`DELETE FROM accounts WHERE id=${id}`;
     await store.close(); await sql.end();
   });
-  async function device() { const d = await store.createDevice(randomUUID()); deviceIds.push(d.id); return d.id; }
+  async function device() { const d = await store.createDevice(createHash("sha256").update(randomUUID()).digest("hex")); deviceIds.push(d.id); return d.id; }
   async function account() { const a = await store.resolveAccount(`synthetic:${randomUUID()}`, at); accountIds.push(a.id); return a; }
   async function official(deviceId: string, instant = "2026-09-08T03:00:00Z") {
     const daily = await store.resolveDaily(new Date(instant)); expect(daily).toBeDefined();

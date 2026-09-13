@@ -326,3 +326,14 @@ reassignment. Callback retains verified login with zero claims if device proof i
 lost. Supabase config is root-only and rejects service paths/query/fragment/URL
 credentials before OAuth. AUTH_COOKIE_SECRET continuity is an operational deployment
 contract, not runtime prediction. M6 stays OPEN pending closure review.
+
+M6-E makes application data server-mediated at the database boundary as well:
+Browser -> Next.js -> application/ports -> trusted direct PostgreSQL connection.
+Supabase clients are Auth-only; the publishable key is public and is not gameplay
+CRUD authorization. Migration 202609130003 enables RLS without FORCE on all 13
+G1 tables (including the ledger), revokes PUBLIC/anon/authenticated table access
+and the five application function EXECUTE grants, and hardens postgres creator
+defaults. No client-readable RLS policies or Data API CRUD are introduced.
+Owner/server access and existing service_role grants remain; future client DB
+features require an explicit security review. Dedicated-project live migration
+verification and final M6 closure review are separate, still pending gates.
