@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { PostgresPrimaryStore } from "@/adapters/postgres-primary-store/postgres-primary-store";
 import { NodeIdentityAdapter } from "@/adapters/node-identity/node-identity";
 import { FakeJudgeAdapter } from "@/adapters/fake-judge/fake-judge";
-import { finishReveal, lock, reveal, startOfficial } from "@/application/play/daily-game";
+import { finishReveal, getOwned, lock, reveal, startOfficial } from "@/application/play/daily-game";
 import { answer } from "../support/judge-submission";
 import rawContent from "../../content/approved/conway-law.v1.json";
 import rawSchedule from "../../content/schedule/daily.v1.json";
@@ -43,6 +43,21 @@ suite("M2 PostgreSQL authority",()=>{
     await expect(submitExplicit(d,device.id,started!.session.id,{...input,thought:full+" "})).rejects.toThrow("IDEMPOTENCY_CONFLICT");
     await expect(submitExplicit(d,device.id,started!.session.id,{...input,submissionId:randomUUID()})).rejects.toThrow("TURN_ALREADY_SUBMITTED");expect(provider.requests).toHaveLength(1);
   });
+  it("M7 both provider attempts observe their distinct committed admission before transport",async()=>{
+    const device=await store.createDevice(identity.hashToken(identity.randomToken()));const started=await startOfficial(deps(),device.id);
+    const observer=postgres(url!,{max:1});const provider=new ScriptedProvider([{bad:true},providerVerdict(full)]);const transport=provider.classify.bind(provider);const observedIds:string[]=[];
+    provider.classify=async request=>{
+      const attempt=provider.requests.length+1;
+      const rows=await observer<{id:string;attempt:number;execution_status:string}[]>`SELECT id,attempt,execution_status FROM ai_runs WHERE session_id=${started!.session.id} AND evaluation_round=0 ORDER BY attempt`;
+      expect(rows).toHaveLength(attempt);expect(rows.at(-1)).toMatchObject({attempt,execution_status:"ADMITTED"});
+      if(attempt===2)expect(rows[0]!.execution_status).toBe("FAILED");
+      observedIds.push(rows.at(-1)!.id);return transport(request);
+    };
+    try{
+      await submitExplicit({...deps(),judge:new OpenAIJudgeAdapter(provider,"fixture",()=>0)},device.id,started!.session.id,{turn:1,submissionId:randomUUID(),thought:full});
+      expect(provider.requests).toHaveLength(2);expect(new Set(observedIds).size).toBe(2);
+    }finally{await observer.end();}
+  });
   it("M7 concurrent different submissions select one accepted turn",async()=>{
     const device=await store.createDevice(identity.hashToken(identity.randomToken()));const started=await startOfficial(deps(),device.id);const provider=new ScriptedProvider([providerVerdict(full)]);const d={...deps(),judge:new OpenAIJudgeAdapter(provider,"fixture",()=>0)};
     const results=await Promise.allSettled([submitExplicit(d,device.id,started!.session.id,{turn:1,submissionId:randomUUID(),thought:full}),submitExplicit(d,device.id,started!.session.id,{turn:1,submissionId:randomUUID(),thought:full})]);expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);expect(provider.requests).toHaveLength(1);expect((await store.getOwnedSession(started!.session.id,device.id))!.thoughts).toHaveLength(1);
@@ -59,10 +74,11 @@ suite("M2 PostgreSQL authority",()=>{
     expect((await store.reserveJudgeRecovery({...input,expectedVersion:paused.stateVersion,runId:randomUUID()})).kind).toBe("RECOVERY_EXHAUSTED");
   });
   it("M7 failed atomic gameplay settlement leaves admission and no semantic completion",async()=>{
-    const owner=await pendingOwner();const next={...owner.session,status:"THINKING" as const,stateVersion:owner.session.stateVersion+1,guidance:[{stage:"INVALID" as "REFLECT",key:"invalid",text:"not persisted"}]};
+    const owner=await pendingOwner();const next={...owner.session,status:"THINKING" as const,stateVersion:owner.session.stateVersion+1,discoveries:owner.session.discoveries.map(n=>({...n,status:"PARTIAL" as const})),guidance:[{stage:"INVALID" as "REFLECT",key:"invalid",text:"not persisted"}]};
     await expect(store.completeJudgeOperation(owner,owner.runId,{attempt:1,provider:"fake",model:"fixture",promptVersion:"fixture",schemaValid:true,resultStatus:"SUCCEEDED",latencyMs:0},next,deps().clock.now())).rejects.toThrow();
     const sql=postgres(url!);try{const [op]=await sql`SELECT status,completed_at FROM ai_operations`;const [run]=await sql`SELECT execution_status FROM ai_runs`;expect(op).toEqual({status:"EVALUATING",completed_at:null});expect(run!.execution_status).toBe("ADMITTED");expect(await sql`SELECT * FROM guidance_events`).toHaveLength(0);}finally{await sql.end();}
-    expect((await store.getOwnedSession(owner.session.id,owner.session.anonymousDeviceId))!.status).toBe("EVALUATING");
+    const restored=(await store.getOwnedSession(owner.session.id,owner.session.anonymousDeviceId))!;
+    expect(restored.status).toBe("EVALUATING");expect(restored.stateVersion).toBe(owner.session.stateVersion);expect(restored.discoveries).toEqual(owner.session.discoveries);
   });
   it("M7 provenance blocks implicit deletion but permits raw-text purge and hash replay",async()=>{
     const device=await store.createDevice(identity.hashToken(identity.randomToken()));const started=await startOfficial(deps(),device.id);const input={turn:1,submissionId:randomUUID(),thought:full};await submitExplicit(deps(),device.id,started!.session.id,input);
@@ -137,6 +153,55 @@ suite("M2 PostgreSQL authority",()=>{
     await locked;
     return async()=>{release();await transaction;await blocker.end();};
   }
+
+  it("M7 saturated transaction pool loads content on its own connection",async()=>{
+    const device=await store.createDevice(identity.hashToken(identity.randomToken()));
+    const started=await startOfficial(deps(),device.id);const session=(await store.getOwnedSession(started!.session.id,device.id))!;
+    const name=`m7-saturation-${randomUUID()}`;const saturated=new PostgresPrimaryStore(namedUrl(name));
+    const observer=postgres(url!,{max:1});const release=await holdSessionRowLock(session.id);
+    let released=false;let completed=false;let timer:ReturnType<typeof setTimeout>|undefined;
+    const submissionId=randomUUID();
+    const requests=Array.from({length:10},()=>saturated.reserveJudgeSubmission({sessionId:session.id,deviceId:device.id,expectedVersion:session.stateVersion,answer:{id:randomUUID(),submissionId,turn:1,stage:session.stage,text:full},payloadHash:identity.hashToken(JSON.stringify([1,full])),operationId:randomUUID(),runId:randomUUID(),at:deps().clock.now(),leaseDurationMs:60000,metadata:{provider:"fake",model:"fixture",promptVersion:"fixture"}}));
+    const pending=Promise.all(requests);void pending.catch(()=>{});
+    try{
+      let saturatedBarrier=false;
+      for(let poll=0;poll<500;poll++){
+        const [row]=await observer`SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE application_name=${name} AND wait_event_type='Lock'`;
+        if(row!.waiting===10){saturatedBarrier=true;break;}
+      }
+      expect(saturatedBarrier).toBe(true); // Release only after all ten connections are reserved.
+      await release();released=true;
+      const results=await Promise.race([pending,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error("M7_POOL_REENTRY_DEADLOCK")),5000);})]);
+      completed=true;expect(results.filter(r=>r.kind==="NEW")).toHaveLength(1);expect(results.filter(r=>r.kind==="REPLAY")).toHaveLength(9);
+      expect(await observer`SELECT id FROM ai_operations`).toHaveLength(1);expect(await observer`SELECT id FROM ai_runs`).toHaveLength(1);
+    }finally{
+      if(timer)clearTimeout(timer);
+      if(!released)await release();
+      if(!completed)await observer`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name=${name}`;
+      await Promise.allSettled(requests);await saturated.close();await observer.end();
+    }
+  },15000);
+
+  it("M7 completed answer and resume replay preserve persisted later synthesis state",async()=>{
+    const sql=postgres(url!);
+    try{await sql`UPDATE daily_schedule d SET content_version_id=v.id FROM content_versions v JOIN content_items i ON i.id=v.content_item_id WHERE d.canonical_date='2026-09-08' AND i.slug='conway-law' AND v.version=5`;}finally{await sql.end();}
+    const device=await store.createDevice(identity.hashToken(identity.randomToken()));const started=await startOfficial(deps(),device.id);
+    const input={turn:1,submissionId:randomUUID(),thought:full};const provider=new ScriptedProvider([providerVerdict(full)]);const d={...deps(),judge:new OpenAIJudgeAdapter(provider,"fixture",()=>0)};
+    const accepted=await submitExplicit(d,device.id,started!.session.id,input);expect(accepted!.session.status).toBe("SYNTHESIZING");
+    const session=(await store.getOwnedSession(started!.session.id,device.id))!;
+    const attempt=await reservation(session,device.id,{text:"persisted later synthesis",submissionTextHash:identity.hashToken("persisted later synthesis")});expect(attempt.kind).toBe("RESERVED");
+    const canonical=(await getOwned(d,device.id,session.id))!.session;
+    expect(canonical.synthesis).toMatchObject({attemptsUsed:1,evaluationInProgress:true,canSubmit:false});
+    const observer=postgres(url!);
+    try{
+      const before=await observer`SELECT id FROM ai_runs ORDER BY id`;
+      for(const replay of [await submitExplicit(d,device.id,session.id,input),await resumeJudgeOperation(d,device.id,session.id,input.submissionId,canonical.stateVersion)]){
+        expect(replay?.processing).toBe("REPLAYED");expect(replay?.session).toEqual(canonical);
+      }
+      expect(await observer`SELECT id FROM ai_runs ORDER BY id`).toEqual(before);
+      expect(await store.getFinalSynthesisAttempts(session.id,device.id)).toHaveLength(1);expect(provider.requests).toHaveLength(1);
+    }finally{await observer.end();}
+  });
 
   it("enforces JavaScript UTF-16 counts, submission idempotency, and concurrent reservation authority",async()=>{
     const sql=postgres(url!);for(const text of ["ascii","한글","😀","😀😀","e\u0301","👨‍👩‍👧‍👦"]) {const [row]=await sql<{length:number}[]>`SELECT utf16_code_unit_length(${text}) length`;expect(row!.length,text).toBe(text.length);}await sql.end();

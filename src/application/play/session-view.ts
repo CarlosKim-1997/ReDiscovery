@@ -44,6 +44,17 @@ export function toPublicSessionView(
   const synthesis = "final_synthesis" in policy
     ? synthesisView(session, policy.final_synthesis, attempts, now)
     : undefined;
+  const operation = session.judgeEvaluation;
+  const expired = operation?.status === "EVALUATING"
+    && Boolean(now && operation.leaseExpiresAt && operation.leaseExpiresAt.getTime() <= now.getTime());
+  const paused = operation?.status === "RECOVERABLE" || operation?.status === "RECOVERY_EXHAUSTED" || expired;
+  const evaluation: PublicSessionView["evaluation"] = operation ? {
+    ...(session.thoughts.at(-1)?.submissionId ? {submissionId: session.thoughts.at(-1)!.submissionId!} : {}),
+    inProgress: operation.status === "EVALUATING" && !expired,
+    paused,
+    canResume: operation.recoveryCount === 0 && (operation.status === "RECOVERABLE" || expired),
+    recoveryExhausted: operation.status === "RECOVERY_EXHAUSTED" || (expired && operation.recoveryCount === 1),
+  } : undefined;
   return {
     id: session.id,
     status: session.status,
@@ -56,20 +67,14 @@ export function toPublicSessionView(
     ...(representativeEvidence ? { representativeThought: resolveEvidence(session, representativeEvidence) } : {}),
     revealCompleted: session.revealCompleted,
     stateVersion: session.stateVersion,
-    ...(session.judgeEvaluation ? {evaluation: {
-      ...(session.thoughts.at(-1)?.submissionId ? {submissionId: session.thoughts.at(-1)!.submissionId!} : {}),
-      inProgress: session.judgeEvaluation.status === "EVALUATING" && (!now || !session.judgeEvaluation.leaseExpiresAt || session.judgeEvaluation.leaseExpiresAt.getTime() > now.getTime()),
-      paused: session.judgeEvaluation.status === "RECOVERABLE" || session.judgeEvaluation.status === "RECOVERY_EXHAUSTED" || (session.judgeEvaluation.status === "EVALUATING" && Boolean(now && session.judgeEvaluation.leaseExpiresAt && session.judgeEvaluation.leaseExpiresAt.getTime() <= now.getTime())),
-      canResume: session.judgeEvaluation.recoveryCount === 0 && (session.judgeEvaluation.status === "RECOVERABLE" || (session.judgeEvaluation.status === "EVALUATING" && Boolean(now && session.judgeEvaluation.leaseExpiresAt && session.judgeEvaluation.leaseExpiresAt.getTime() <= now.getTime()))),
-      recoveryExhausted: session.judgeEvaluation.status === "RECOVERY_EXHAUSTED",
-    }} : {}),
+    ...(evaluation ? {evaluation} : {}),
     ...("adaptive_guidance" in policy ? { adaptive: {
       learnerState: resolveLearnerState(session.discoveries, policy),
       ...(session.turnCount > 0 && session.status !== "EVALUATING" && session.status !== "ERROR_RECOVERABLE" ? adaptiveFeedback(session, policy) : {}),
       canAnswer: session.status === "THINKING" && session.turnCount < 2,
       canReveal: session.status === "REVEAL_READY",
-      canResume: session.status === "ERROR_RECOVERABLE",
-      paused: session.status === "ERROR_RECOVERABLE",
+      canResume: evaluation?.canResume ?? false,
+      paused: evaluation?.paused ?? session.status === "ERROR_RECOVERABLE",
     } } : {}),
     ...(synthesis ? { synthesis } : {}),
   };

@@ -31,7 +31,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort 
       const [occupied] = await tx`SELECT id FROM user_answers WHERE session_id=${input.sessionId} AND turn=${input.answer.turn}`;
       if (occupied) return { kind: "TURN_ALREADY_SUBMITTED" };
       const session = (await this.load(tx,input.sessionId,input.deviceId))!;
-      const content = await this.getContentVersion(session.contentVersionId);
+      const content = await this.getContentVersion(session.contentVersionId,tx);
       if (!content || session.status !== "THINKING" || input.answer.turn !== session.turnCount+1 || input.answer.turn > content.serverPolicy.max_turns || !input.answer.text.trim() || input.answer.text.length > 2000) return { kind: "INVALID_SESSION_STATE" };
       if (session.stateVersion !== input.expectedVersion) return { kind: "STALE_STATE_VERSION" };
       const answer = { ...input.answer, stage: session.stage };
@@ -159,8 +159,8 @@ export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort 
     return row ? { id:String(row.id),canonicalDate:dateText(row.canonical_date),sequenceNumber:Number(row.sequence_number),releaseAt:new Date(String(row.release_at)),contentVersionId:String(row.content_version_id),publicPlay:row.public_play as PublicPlay } : undefined;
   }
   async getDaily(id:string):Promise<DailyRecord|undefined>{const [r]=await this.sql<Row[]>`SELECT d.*,v.public_play FROM daily_schedule d JOIN content_versions v ON v.id=d.content_version_id WHERE d.id=${id}`;return r?{id:String(r.id),canonicalDate:dateText(r.canonical_date),sequenceNumber:Number(r.sequence_number),releaseAt:new Date(String(r.release_at)),contentVersionId:String(r.content_version_id),publicPlay:r.public_play as PublicPlay}:undefined;}
-  async getContentVersion(id: string): Promise<ContentVersion | undefined> {
-    const [r] = await this.sql<Row[]>`SELECT * FROM content_versions WHERE id=${id}`;
+  async getContentVersion(id: string, sql: Sql = this.sql): Promise<ContentVersion | undefined> {
+    const [r] = await sql<Row[]>`SELECT * FROM content_versions WHERE id=${id}`;
     return r ? { id:String(r.id),version:Number(r.version),schemaVersion:Number(r.schema_version),contentHash:String(r.content_hash),publicPlay:r.public_play as PublicPlay,judgeRubric:r.judge_rubric as JudgeRubric,serverPolicy:r.server_policy as ServerPolicy,revealContent:r.reveal_content as RevealContent } : undefined;
   }
   async findActiveDevice(hash:string) { const [r]=await this.sql<Row[]>`SELECT id FROM anonymous_devices WHERE token_hash=${hash} AND status='ACTIVE'`; return r ? {id:String(r.id)} : undefined; }
@@ -255,7 +255,7 @@ export class PostgresPrimaryStore implements PrimaryStorePort, AccountStorePort 
     const [judgeRow]=await sql<Row[]>`SELECT o.* FROM ai_operations o JOIN user_answers a ON a.id=o.answer_id WHERE a.session_id=${id} AND a.turn=${Number(s.turn_count)} AND o.kind='JUDGE'`;
     const nodes=await sql<Row[]>`SELECT * FROM node_discoveries WHERE session_id=${id} ORDER BY node_id`;
     const events=await sql<Row[]>`SELECT stage,guidance_key FROM guidance_events WHERE session_id=${id} ORDER BY created_at,id`;
-    const content=await this.getContentVersion(String(s.content_version_id));if(!content)throw new Error("CONTENT_VERSION_NOT_FOUND");
+    const content=await this.getContentVersion(String(s.content_version_id),sql);if(!content)throw new Error("CONTENT_VERSION_NOT_FOUND");
     return {id,dailyId:String(s.daily_id),contentVersionId:String(s.content_version_id),anonymousDeviceId:deviceId,attemptType:s.attempt_type as PlaySession["attemptType"],status:s.status as PlaySession["status"],stage:s.stage as PlaySession["stage"],turnCount:Number(s.turn_count),stateVersion:Number(s.state_version),
       ...(s.account_id ? {accountId:String(s.account_id),accountClaimedAt:new Date(String(s.account_claimed_at))}:{}),
       ...(judgeRow ? {judgeEvaluation: operation(judgeRow)} : {}),

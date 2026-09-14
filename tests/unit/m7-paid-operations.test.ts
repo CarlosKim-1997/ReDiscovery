@@ -4,6 +4,7 @@ import { answer,startOfficial } from "@/application/play/daily-game";
 import { resumeJudgeOperation } from "@/application/play/judge-operations";
 import { AdaptiveEvaluationPausedError } from "@/application/play/adaptive-evaluation";
 import { OpenAIJudgeAdapter } from "@/adapters/openai-judge/openai-judge";
+import { toPublicSessionView } from "@/application/play/session-view";
 import { adaptiveRuntimeFixture,fixtureProviderFailure,ADAPTIVE_FULL_FIXTURE_ANSWER } from "../support/adaptive-runtime-fixture";
 
 async function setup(legacy=false) { const f=adaptiveRuntimeFixture(legacy);await startOfficial(f.deps,"device");return f; }
@@ -58,5 +59,26 @@ describe("M7-A submission admission and replay",()=>{
     const classify=vi.fn().mockRejectedValueOnce(new Error("transport unknown")).mockResolvedValueOnce({output});
     const retry=vi.spyOn(f.deps.store,"admitJudgeRetry");const judge=new OpenAIJudgeAdapter({classify},"fixture");
     await answer({...f.deps,judge},"device",f.session().id,{...payload(),thought:text});expect(classify).toHaveBeenCalledTimes(2);expect(retry).toHaveBeenCalledTimes(1);expect(retry.mock.calls[0]?.[0].operation.recoveryCount).toBe(0);
+  });
+  it("attempt-2 admission failure never enters the second provider transport",async()=>{
+    const f=await setup();const classify=vi.fn().mockResolvedValue({output:{bad:true}});
+    const retry=vi.spyOn(f.deps.store,"admitJudgeRetry").mockRejectedValue(new Error("DB_ADMISSION_FAILED"));
+    await expect(answer({...f.deps,judge:new OpenAIJudgeAdapter({classify},"fixture")},"device",f.session().id,payload())).rejects.toBeInstanceOf(AdaptiveEvaluationPausedError);
+    expect(retry).toHaveBeenCalledTimes(1);expect(classify).toHaveBeenCalledTimes(1);
+    expect(f.session()).toMatchObject({status:"ERROR_RECOVERABLE",turnCount:1});
+  });
+  describe.each([false,true])("common recovery projection (legacy=%s)",legacy=>{
+    it.each([
+      ["RECOVERABLE",0,true,false],
+      ["RECOVERY_EXHAUSTED",1,false,true],
+      ["EVALUATING",0,true,false],
+      ["EVALUATING",1,false,true],
+    ] as const)("%s round %s exposes consistent resume capability",async(status,recoveryCount,canResume,recoveryExhausted)=>{
+      const f=await setup(legacy);const now=f.deps.clock.now();
+      const session={...f.session(),status:"ERROR_RECOVERABLE" as const,judgeEvaluation:{status,recoveryCount,...(status==="EVALUATING"?{leaseExpiresAt:new Date(now.getTime()-1)}:{})}};
+      const view=toPublicSessionView(session,f.content.SERVER_POLICY,[],now);
+      expect(view.evaluation).toMatchObject({inProgress:false,paused:true,canResume,recoveryExhausted});
+      if(!legacy)expect(view.adaptive).toMatchObject({paused:true,canResume});
+    });
   });
 });

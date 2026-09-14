@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DailyGameDeps } from "./daily-game";
+import { getOwned, type DailyGameDeps } from "./daily-game";
 import type { ContentVersion } from "@/domain/content/schema";
 import type { JudgeExecutionOwner } from "@/ports/ai-operation";
 import { JudgeExecutionError } from "@/ports/judge";
@@ -24,7 +24,7 @@ export async function submitJudgeOperation(deps: DailyGameDeps,deviceId: string,
     answer: { id: deps.identity.randomId(),submissionId: input.submissionId,turn: input.turn,stage: session.stage,text: input.thought },
     payloadHash: deps.identity.hashToken(JSON.stringify([input.turn,input.thought])),operationId: deps.identity.randomId(),runId: deps.identity.randomId(),at: deps.clock.now(),leaseDurationMs: JUDGE_ROUND_LEASE_MS,metadata: metadata(deps) });
   if (result.kind === "SESSION_NOT_FOUND") return undefined;
-  if (result.kind === "REPLAY") return { processing: "REPLAYED" as const,session: toPublicSessionView(result.session,content.serverPolicy,[],deps.clock.now()) };
+  if (result.kind === "REPLAY") return replayJudgeOperation(deps,deviceId,sessionId);
   if (result.kind !== "NEW") throw new Error(result.kind);
   return executeJudgeOperation(deps,result.owner,content);
 }
@@ -37,9 +37,15 @@ export async function resumeJudgeOperation(deps: DailyGameDeps,deviceId: string,
   if ("adaptive_guidance" in content.serverPolicy) await requireSemanticAiReadiness(deps);
   const result = await deps.store.reserveJudgeRecovery({ sessionId,deviceId,submissionId,expectedVersion,runId: deps.identity.randomId(),at: deps.clock.now(),leaseDurationMs: JUDGE_ROUND_LEASE_MS,metadata: metadata(deps) });
   if (result.kind === "SESSION_NOT_FOUND") return undefined;
-  if (result.kind === "REPLAY") return { processing: "REPLAYED" as const,session: toPublicSessionView(result.session,content.serverPolicy,[],deps.clock.now()) };
+  if (result.kind === "REPLAY") return replayJudgeOperation(deps,deviceId,sessionId);
   if (result.kind !== "NEW") throw new Error(result.kind);
   return executeJudgeOperation(deps,result.owner,content);
+}
+
+// Reservation has committed before this canonical loader uses the pool.
+async function replayJudgeOperation(deps: DailyGameDeps,deviceId: string,sessionId: string) {
+  const current = await getOwned(deps,deviceId,sessionId);
+  return current ? {processing: "REPLAYED" as const,session: current.session} : undefined;
 }
 
 export async function executeJudgeOperation(deps: DailyGameDeps,owner: JudgeExecutionOwner,content: ContentVersion) {
