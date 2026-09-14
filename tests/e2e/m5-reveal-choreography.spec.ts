@@ -10,7 +10,7 @@ test("two-turn Reveal choreography, mobile skip and stable reload", async ({ pag
   let revealGets = 0; let completionPosts = 0;
   await page.route("**/api/play-sessions/**", async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/answers")) return route.fulfill({ json: await answer(f.deps, "device", "adaptive-fixture", route.request().postDataJSON().thought) });
+    if (path.endsWith("/answers")) return route.fulfill({ json: await answer(f.deps, "device", "adaptive-fixture", route.request().postDataJSON()) });
     if (path.endsWith("/reveal")) {
       if (route.request().method() === "POST") { completionPosts++; return route.fulfill({ json: { session: await finishReveal(f.deps, "device", "adaptive-fixture") } }); }
       revealGets++; return route.fulfill({ json: { reveal: await reveal(f.deps, "device", "adaptive-fixture") } });
